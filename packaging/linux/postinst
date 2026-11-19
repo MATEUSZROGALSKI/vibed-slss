@@ -1,0 +1,12 @@
+#!/bin/sh
+# postinst — hint the user unit into place. The daemon is a systemd --user
+# unit, so system-level `daemon-reload` cannot enable it; print guidance for
+# each logged-in user instead of failing headless installs.
+set -e
+
+if command -v systemd >/dev/null 2>&1; then
+    echo "SteamLibraryScreensaver installed."
+    echo "Enable the idle daemon per user with:"
+    echo "  systemctl --user enable --now slc-screensaverd.service"
+fi
+exit 0

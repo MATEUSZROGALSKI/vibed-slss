@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/steam-library-screensaver/config.schema.json",
+  "title": "SteamLibraryScreensaver configuration",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "version": { "type": "integer", "minimum": 1, "default": 1 },
+    "content": {
+      "type": "object",
+      "properties": {
+        "steamRoot": { "type": ["string", "null"], "default": null },
+        "includeKinds": {
+          "type": "array",
+          "items": { "enum": ["hero", "grid", "logo", "header", "icon"] },
+          "default": ["hero", "grid", "header"]
+        },
+        "excludeAppIds": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[0-9]+$" },
+          "default": ["228980"]
+        },
+        "minImageWidth": { "type": "integer", "minimum": 0, "default": 300 },
+        "installedOnly": { "type": "boolean", "default": false }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "properties": {
+        "strategy": { "enum": ["random", "grid", "masonry", "spiral", "spotlight", "bsp", "rows", "mosaic"], "default": "random" },
+        "cellCount": { "type": "integer", "minimum": 1, "maximum": 64, "default": 12 },
+        "cellCountMin": { "type": "integer", "minimum": 2, "maximum": 64, "default": 4 },
+        "gutter": { "type": "integer", "minimum": 0, "default": 12 },
+        "collageProbability": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 },
+        "seed": { "type": ["integer", "string"], "default": "random" }
+      }
+    },
+    "animation": {
+      "type": "object",
+      "properties": {
+        "kenBurns": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "durationMs": { "type": "integer", "minimum": 500, "default": 8000 },
+            "zoomFrom": { "type": "number", "exclusiveMinimum": 0, "default": 1.35 },
+            "zoomTo": { "type": "number", "exclusiveMinimum": 0, "default": 1.0 }
+          }
+        },
+        "collage": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "fadeInMs": { "type": "integer", "minimum": 0, "default": 600 },
+            "driftPx": { "type": "integer", "minimum": 0, "default": 40 }
+          }
+        },
+        "transitionMs": { "type": "integer", "minimum": 0, "default": 1200 },
+        "stillMs": { "type": "integer", "minimum": 0, "maximum": 60000, "default": 5000 },
+        "showBadge": { "type": "boolean", "default": true },
+        "transition": { "enum": ["random", "crossfade", "fadeblack", "slide", "zoom"], "default": "random" }
+      }
+    },
+    "rendering": {
+      "type": "object",
+      "properties": {
+        "targetFps": { "type": "integer", "minimum": 1, "maximum": 240, "default": 60 },
+        "vsync": { "type": "boolean", "default": true },
+        "blurBackground": { "type": "boolean", "default": true },
+        "shader": { "type": "string", "default": "" }
+      }
+    },
+    "enrichment": {
+      "type": "object",
+      "properties": {
+        "steamGridDb": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "apiKeyEnvVar": { "type": "string", "default": "SLC_SGDB_KEY" }
+          }
+        },
+        "hltb": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true }
+          }
+        }
+      }
+    },
+    "advanced": {
+      "type": "object",
+      "properties": {
+        "logLevel": { "enum": ["trace", "debug", "info", "warn", "error"], "default": "info" },
+        "cacheDir": { "type": ["string", "null"], "default": null },
+        "debugUi": { "type": "boolean", "default": false }
+      }
+    }
+  }
+}

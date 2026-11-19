@@ -1,0 +1,110 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "VCPKG_MANIFEST_FEATURES": "tests;enrichment",
+        "SLC_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "dev-win",
+      "displayName": "Windows dev (MSVC + Ninja)",
+      "inherits": "base",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "dev-linux",
+      "displayName": "Linux dev (GCC/Clang + Ninja)",
+      "inherits": "base",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    },
+    {
+      "name": "dev-mac",
+      "displayName": "macOS dev (AppleClang + Ninja)",
+      "inherits": "base",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" }
+    },
+    {
+      "name": "ci-win",
+      "inherits": "dev-win",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "SLC_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "ci-linux",
+      "inherits": "dev-linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "SLC_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "ci-mac",
+      "inherits": "dev-mac",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "SLC_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "release-win",
+      "inherits": "ci-win"
+    },
+    {
+      "name": "release-linux",
+      "inherits": "ci-linux"
+    },
+    {
+      "name": "release-mac",
+      "inherits": "ci-mac",
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "arm64;x86_64"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev-win",
+      "configurePreset": "dev-win"
+    },
+    {
+      "name": "dev-linux",
+      "configurePreset": "dev-linux"
+    },
+    {
+      "name": "dev-mac",
+      "configurePreset": "dev-mac"
+    },
+    {
+      "name": "ci-win",
+      "configurePreset": "ci-win"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev-win",
+      "configurePreset": "dev-win",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "dev-linux",
+      "configurePreset": "dev-linux",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "dev-mac",
+      "configurePreset": "dev-mac",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

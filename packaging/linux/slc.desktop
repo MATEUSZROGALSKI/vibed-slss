@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Steam Library Screensaver
+Comment=Animated collage screensaver built from your local Steam library art
+Exec=slc_host_linux --run
+Icon=steam-library-screensaver
+Categories=Utility;
+Terminal=false

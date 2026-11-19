@@ -1,0 +1,16 @@
+[Unit]
+Description=Steam Library Screensaver daemon (DBus idle watcher)
+Documentation=https://github.com/steam-library-screensaver
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/slc_host_linux daemon
+Restart=on-failure
+RestartSec=5
+# Screensaver must die with the graphical session.
+TimeoutStopSec=3
+
+[Install]
+WantedBy=graphical-session.target

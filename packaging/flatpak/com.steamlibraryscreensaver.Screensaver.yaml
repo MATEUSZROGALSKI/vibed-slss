@@ -1,0 +1,63 @@
+# Doc 8.4 — Flatpak manifest for the Linux distribution channel.
+#
+# Hosted in the Flathub fork repo at release time; kept here so it tracks
+# the build system. The kde runtime supplies Qt 6 for the configurator and
+# the session-bus DBus contracts the idle daemon needs.
+app-id: com.steamlibraryscreensaver.Screensaver
+runtime: org.kde.Platform
+runtime-version: "6.8"
+sdk: org.kde.Sdk
+command: slc_host_linux
+
+finish-args:
+  # OpenGL + windowing for the Cinder session child.
+  - --device=dri
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  # Steam artwork (read-only): standard and Flatpak-Steam locations.
+  - --filesystem=~/.local/share/Steam:ro
+  - --filesystem=~/.steam:ro
+  - --filesystem=~/.var/app/com.valvesoftware.Steam/.local/share/Steam:ro
+  # Config + cache write access.
+  - --filesystem=xdg-config/steam-library-screensaver:create
+  - --filesystem=xdg-cache/steam-library-screensaver:create
+  # Idle detection (doc 6.1.3 Path A) + wallpaper backends.
+  - --talk-name=org.freedesktop.ScreenSaver
+  - --talk-name=org.gnome.SessionManager
+  - --talk-name=org.kde.KIdleTime
+  - --talk-name=org.freedesktop.impl.portal.PermissionStore
+  # Wallpaper backends: dconf-backed gsettings (GNOME/Cinnamon) and the
+  # Plasma shell scripting interface.
+  - --talk-name=ca.desrt.dconf
+  - --talk-name=org.kde.plasmashell
+  # Tray: systemctl --user enable for the screensaver daemon unit.
+  - --talk-name=org.freedesktop.systemd1
+  # Tray: loginctl session LockedHint probe (auto-pause).
+  - --system-talk-name=org.freedesktop.login1
+
+modules:
+  - name: vcpkg
+    buildsystem: simple
+    build-commands:
+      - ./bootstrap-vcpkg.sh -disableMetrics
+    sources:
+      - type: git
+        url: https://github.com/microsoft/vcpkg
+        tag: 2025.04.09
+    cleanup: ["*"]
+
+  - name: steam-library-screensaver
+    buildsystem: cmake-ninja
+    builddir: true
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_TOOLCHAIN_FILE=/run/build/vcpkg/scripts/buildsystems/vcpkg.cmake
+      - -DVCPKG_MANIFEST_FEATURES=enrichment
+      - -DSLC_BUILD_TESTS=OFF
+      - -DSLC_BUILD_CINDER=ON
+      - -DSLC_BUILD_QT_TOOLS=ON
+      - -DSLC_BUILD_HOSTS=ON
+    sources:
+      - type: dir
+        path: ../..

@@ -1,0 +1,84 @@
+name: nightly-soak
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      soak_seconds:
+        description: "Soak duration in seconds (default 8h; use e.g. 600 for a smoke soak)"
+        required: false
+        default: "28800"
+
+# Doc 8.4 / goal G5 — 8-hour headless run of the renderer on Windows and
+# Linux (Mesa llvmpipe under Xvfb); assert zero crashes and peak RSS <=
+# 500 MB. SLC_SOAK_SEC lets workflow_dispatch run shorter smoke soaks.
+
+jobs:
+  soak-linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 500
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: lukka/get-cmake@latest
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: master
+
+      - name: Install Xvfb + Qt deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb mesa-utils libgl1-mesa-dri \
+            qt6-base-dev libglx-dev libx11-dev libfontconfig-dev
+
+      - name: Configure
+        run: >
+          cmake --preset ci-linux
+          -DSLC_BUILD_CINDER=ON -DSLC_BUILD_QT_TOOLS=ON
+          -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build/ci-linux --target slc_host_linux -j 4
+
+      - name: 8h soak (llvmpipe under Xvfb)
+        env:
+          SLC_SOAK_SEC: ${{ inputs.soak_seconds || '28800' }}
+          SLC_STEAM_ROOT: ${{ github.workspace }}/tests/fixtures/steam-trees/basic
+        run: |
+          xvfb-run -a -s "-screen 0 1920x1080x24" \
+            bash tools/ci/soak.sh build/ci-linux/src/platform/linux/slc_host_linux
+
+  soak-windows:
+    runs-on: windows-2022
+    timeout-minutes: 500
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: lukka/get-cmake@latest
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: master
+
+      - name: Configure
+        run: cmake --preset ci-win -DSLC_BUILD_CINDER=ON -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build/ci-win --target slc_host_win --config Release
+
+      - name: 8h soak (.scr /s)
+        env:
+          SLC_SOAK_SEC: ${{ inputs.soak_seconds || '28800' }}
+          SLC_STEAM_ROOT: ${{ github.workspace }}/tests/fixtures/steam-trees/basic
+        shell: pwsh
+        run: >
+          tools/ci/soak.ps1 -Scr
+          build/ci-win/src/platform/win/Release/SteamLibraryScreensaver.scr

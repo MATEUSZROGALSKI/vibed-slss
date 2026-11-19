@@ -1,0 +1,22 @@
+"libraryfolders"
+{
+	"0"
+	{
+		"path"		"."
+		"label"		""
+		"apps"
+		{
+			"440"		"15000000000"
+			"570"		"20000000000"
+		}
+	}
+	"1"
+	{
+		"path"		"library2"
+		"label"		"secondary"
+		"apps"
+		{
+			"730"		"30000000000"
+		}
+	}
+}

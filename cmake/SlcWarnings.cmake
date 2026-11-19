@@ -1,0 +1,17 @@
+# Warning flags shared by all slc_* targets.
+# Usage: slc_set_warnings(<target>)
+option(SLC_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
+
+function(slc_set_warnings target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /permissive- /utf-8)
+        if(SLC_WARNINGS_AS_ERRORS)
+            target_compile_options(${target} PRIVATE /WX)
+        endif()
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+        if(SLC_WARNINGS_AS_ERRORS)
+            target_compile_options(${target} PRIVATE -Werror)
+        endif()
+    endif()
+endfunction()

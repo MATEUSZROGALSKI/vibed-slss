@@ -1,0 +1,94 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+# Doc section 8.4: on v* tags produce per-OS installer artifacts.
+# Windows/macOS signing+notarization secrets are configured at the org level;
+# unsigned artifacts are still uploaded for validation on every tag.
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-2022, preset: ci-win, artifact: installer }
+          - { os: ubuntu-24.04, preset: ci-linux, artifact: deb }
+          - { os: macos-15, preset: ci-mac, artifact: saver }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: lukka/get-cmake@latest
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: master
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }} --config Release
+
+      - name: Package (Linux .deb/.tar.gz)
+        if: runner.os == 'Linux'
+        working-directory: build/${{ matrix.preset }}
+        run: cpack -G "DEB;TGZ"
+
+      - name: Package (Windows NSIS)
+        if: runner.os == 'Windows'
+        working-directory: build/${{ matrix.preset }}
+        run: cpack -G NSIS64
+        continue-on-error: true # falls back to raw artifacts below
+
+      - name: Package (macOS DragNDrop)
+        if: runner.os == 'macOS'
+        working-directory: build/${{ matrix.preset }}
+        run: cpack -G DragNDrop
+
+      - name: Package (Linux AppImage)
+        if: runner.os == 'Linux'
+        run: |
+          cmake --install build/${{ matrix.preset }} --prefix AppDir/usr
+          mkdir -p AppDir/usr/share/applications
+          cp packaging/linux/slc.desktop \
+            AppDir/usr/share/applications/steam-library-screensaver.desktop
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir \
+            --desktop-file AppDir/usr/share/applications/steam-library-screensaver.desktop \
+            --output appimage
+          mv SteamLibraryScreensaver-*.AppImage \
+            build/${{ matrix.preset }}/packages/ || true
+
+      - name: SBOM + THIRD_PARTY.md (doc 8.4)
+        shell: bash
+        run: |
+          python3 tools/ci/gen_third_party.py \
+            build/${{ matrix.preset }}/vcpkg_installed \
+            --manifest vcpkg.json --features enrichment,gui \
+            --out-md THIRD_PARTY.md --out-sbom sbom.cdx.json \
+            --extra "Cinder=${{ vars.SLC_CINDER_GIT_TAG || '0.9.3' }}=BSD-3-Clause=build/${{ matrix.preset }}/_deps/cinder-src/COPYING"
+          cp THIRD_PARTY.md sbom.cdx.json \
+            build/${{ matrix.preset }}/packages/ 2>/dev/null || \
+            mkdir -p build/${{ matrix.preset }}/packages && \
+            cp THIRD_PARTY.md sbom.cdx.json build/${{ matrix.preset }}/packages/
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: slc-packages-${{ runner.os }}
+          path: |
+            build/*/packages/
+            build/*/src/platform/win/SteamLibraryScreensaver.scr
+            build/*/src/platform/win/slc_host_win.exe
+          if-no-files-found: warn

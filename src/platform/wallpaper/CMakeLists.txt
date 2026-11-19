@@ -1,0 +1,17 @@
+add_library(slc_wallpaper STATIC)
+add_library(slc::wallpaper ALIAS slc_wallpaper)
+
+if(WIN32)
+    target_sources(slc_wallpaper PRIVATE src/backend_win.cpp)
+elseif(APPLE)
+    target_sources(slc_wallpaper PRIVATE src/backend_stub.cpp)
+else()
+    target_sources(slc_wallpaper PRIVATE src/backend_linux.cpp)
+endif()
+
+target_include_directories(slc_wallpaper PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(slc_wallpaper PUBLIC slc::common PRIVATE slc::platform_iface)
+if(WIN32)
+    target_link_libraries(slc_wallpaper PRIVATE ole32)
+endif()
+slc_set_warnings(slc_wallpaper)

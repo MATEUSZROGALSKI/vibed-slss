@@ -1,0 +1,37 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "steam-library-screensaver",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "nlohmann-json",
+    "spdlog"
+  ],
+  "features": {
+    "tests": {
+      "description": "Unit tests and benchmarks",
+      "dependencies": [
+        "gtest",
+        "benchmark"
+      ]
+    },
+    "enrichment": {
+      "description": "Optional SteamGridDB network enrichment",
+      "dependencies": [
+        "cpr",
+        "openssl"
+      ]
+    },
+    "parallel": {
+      "description": "TBB-backed parallel image decode pool",
+      "dependencies": [
+        "onetbb"
+      ]
+    },
+    "gui": {
+      "description": "Qt 6 configurator and Linux screensaver host",
+      "dependencies": [
+        "qtbase"
+      ]
+    }
+  }
+}
