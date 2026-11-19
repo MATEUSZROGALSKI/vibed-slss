@@ -10,6 +10,7 @@
 #include "slc/content/hltb.h"
 #include "slc/content/steam_local_provider.h"
 #include "slc/content/steamgriddb_provider.h"
+#include "slc/platform/credential.h"
 #include "slc/platform/media.h"
 #include "slc/platform/paths.h"
 
@@ -66,8 +67,14 @@ void ScreensaverApp::startDiscovery()
         if (cfg.enrichment.steamGridDbEnabled) {
             if (auto transport = enrichment::makeHttpTransport()) {
                 content::SgdbOptions opt;
-                opt.apiKey = env::get(cfg.enrichment.apiKeyEnvVar)
-                                 .value_or("");
+                // Env var first (documented override), then the OS
+                // keychain (doc §6.2 — `--store-sgdb-key` writes it).
+                opt.apiKey =
+                    env::get(cfg.enrichment.apiKeyEnvVar)
+                        .or_else([] {
+                            return platform::loadCredential("sgdb.apiKey");
+                        })
+                        .value_or("");
                 opt.cacheDir =
                     cfg.advanced.cacheDir.value_or(platform::cacheDir());
                 opt.includeKinds = ctx.includeKinds;

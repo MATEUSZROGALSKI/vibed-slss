@@ -33,6 +33,8 @@ if(SLC_BUILD_CINDER)
     # Wayland live wallpaper: wlr-layer-shell background surface fed by a
     # wl_shm buffer ring. Needs only libwayland-client + the scanner; the
     # protocol XML is vendored under wayland/.
+    # HINTS cover sysroot-style dev setups (no sudo, libs extracted
+    # under $HOME); standard toolchain paths still work via defaults.
     find_program(WAYLAND_SCANNER NAMES wayland-scanner
         PATHS /home/ubuntu/sysroot/usr/bin /usr/bin /usr/local/bin)
     find_library(WAYLAND_CLIENT_LIB NAMES wayland-client
@@ -48,17 +50,25 @@ if(SLC_BUILD_CINDER)
         # symbol must be generated as well.
         set(_xdg_xml ${CMAKE_CURRENT_SOURCE_DIR}/wayland/xdg-shell.xml)
         set(_xdg_src ${CMAKE_CURRENT_BINARY_DIR}/xdg-shell-protocol.c)
-        add_custom_command(OUTPUT ${_ls_hdr} ${_ls_src} ${_xdg_src}
+        # §6.1.3 Path C: compositor-driven idle notification (replaces
+        # the DBus idle poll under Wayland sessions).
+        set(_in_xml ${CMAKE_CURRENT_SOURCE_DIR}/wayland/ext-idle-notify-v1.xml)
+        set(_in_hdr ${CMAKE_CURRENT_BINARY_DIR}/ext-idle-notify-v1-client-protocol.h)
+        set(_in_src ${CMAKE_CURRENT_BINARY_DIR}/ext-idle-notify-v1-protocol.c)
+        add_custom_command(OUTPUT ${_ls_hdr} ${_ls_src} ${_xdg_src} ${_in_hdr} ${_in_src}
             COMMAND ${WAYLAND_SCANNER} client-header ${_ls_xml} ${_ls_hdr}
             COMMAND ${WAYLAND_SCANNER} private-code ${_ls_xml} ${_ls_src}
             COMMAND ${WAYLAND_SCANNER} private-code ${_xdg_xml} ${_xdg_src}
-            DEPENDS ${_ls_xml} ${_xdg_xml}
+            COMMAND ${WAYLAND_SCANNER} client-header ${_in_xml} ${_in_hdr}
+            COMMAND ${WAYLAND_SCANNER} private-code ${_in_xml} ${_in_src}
+            DEPENDS ${_ls_xml} ${_xdg_xml} ${_in_xml}
             VERBATIM)
         target_sources(slc_host_linux PRIVATE
-            wayland/layer_wallpaper.cpp ${_ls_hdr} ${_ls_src} ${_xdg_src})
+            wayland/layer_wallpaper.cpp wayland/wayland_idle.cpp
+            ${_ls_hdr} ${_ls_src} ${_xdg_src} ${_in_hdr} ${_in_src})
         target_include_directories(slc_host_linux SYSTEM PRIVATE
             ${CMAKE_CURRENT_BINARY_DIR} ${WAYLAND_CLIENT_INCLUDE})
-        target_compile_definitions(slc_host_linux PRIVATE SLC_WAYLAND_WALLPAPER)
+        target_compile_definitions(slc_host_linux PRIVATE SLC_WAYLAND_WALLPAPER SLC_WAYLAND_IDLE)
         target_link_libraries(slc_host_linux PRIVATE ${WAYLAND_CLIENT_LIB})
         message(STATUS "Wayland live wallpaper: enabled (layer-shell)")
     else()

@@ -20,6 +20,7 @@
 #include "slc/config/app_config.h"
 #include "slc/content/content_service.h"
 #include "slc/content/steam_local_provider.h"
+#include "slc/platform/credential.h"
 #include "slc/platform/paths.h"
 
 #include <windows.h>
@@ -46,6 +47,7 @@ enum class Mode {
     ListArtwork,
     Wallpaper,
     Control,
+    StoreSgdbKey,
     Help
 };
 
@@ -55,6 +57,7 @@ struct Args {
     bool allowTestHooks = false;
     bool debugUi = false;
     std::wstring ctlCmd;
+    std::wstring sgdbKey;
 };
 
 Args parseArgs(const std::wstring& cmdline)
@@ -107,6 +110,11 @@ Args parseArgs(const std::wstring& cmdline)
             }
             out.ctlCmd = std::move(rest);
             break;
+        } else if (t == L"--store-sgdb-key") {
+            out.mode = Mode::StoreSgdbKey;
+            if (!(ss >> out.sgdbKey)) {
+                out.sgdbKey.clear();
+            }
         } else if (t == L"--wallpaper") {
             out.mode = Mode::Wallpaper;
         } else if (t == L"--help" || t == L"-h") {
@@ -171,7 +179,9 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR cmdline, int)
                    "  --allow-test-hooks  honour SLC_TEST_* env vars\n"
                    "  --debug-ui    ImGui debug overlay (needs SLC_WITH_IMGUI)\n"
                    "  --ctl <CMD>   control channel: RELOAD | STATUS |"
-                   " SETCONFIG <json>\n",
+                   " SETCONFIG <json>\n"
+                   "  --store-sgdb-key <key>  save SGDB key in Credential "
+                   "Manager\n",
                    stdout);
         return 0;
 
@@ -257,6 +267,26 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR cmdline, int)
         const std::string reply = slc::platform::sendControlCommand(cmd);
         std::puts(reply.c_str());
         return reply.rfind("error", 0) == 0 ? 1 : 0;
+    }
+
+    case Mode::StoreSgdbKey: {
+        if (args.sgdbKey.empty()) {
+            std::fputs("usage: --store-sgdb-key <key>\n", stderr);
+            return 2;
+        }
+        std::string key(
+            WideCharToMultiByte(CP_UTF8, 0, args.sgdbKey.c_str(), -1,
+                                nullptr, 0, nullptr, nullptr) - 1,
+            '\0');
+        WideCharToMultiByte(CP_UTF8, 0, args.sgdbKey.c_str(), -1,
+                            key.data(), static_cast<int>(key.size() + 1),
+                            nullptr, nullptr);
+        if (!slc::platform::storeCredential("sgdb.apiKey", key)) {
+            std::fputs("error: Credential Manager write failed\n", stderr);
+            return 1;
+        }
+        std::puts("sgdb.apiKey stored in Credential Manager");
+        return 0;
     }
 
     case Mode::Preview:

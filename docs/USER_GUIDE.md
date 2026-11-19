@@ -93,7 +93,7 @@ Strategies:
 | Key | Default | Meaning |
 |---|---|---|
 | `steamGridDb.enabled` | `false` | Pull extra artwork from SteamGridDB. Needs a free API key. |
-| `steamGridDb.apiKeyEnvVar` | `SLC_SGDB_KEY` | Name of the env var holding your SGDB key. |
+| `steamGridDb.apiKeyEnvVar` | `SLC_SGDB_KEY` | Name of the env var holding your SGDB key. If unset, the OS keychain is checked — store it once with `slc_host_win --store-sgdb-key <key>` (Windows Credential Manager) or `slc_host_linux --store-sgdb-key <key>` (session keyring). |
 | `hltb.enabled` | `true` | Resolve "how long to beat" durations in the background. |
 
 HLTB lookups run on a background thread at ~3 requests/second, are cached

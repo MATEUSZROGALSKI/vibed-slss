@@ -104,6 +104,21 @@ if(TARGET benchmark::benchmark)
     endif()
 endif()
 
+# doc §9.4 visual regression: deterministic seeded collage → PNG,
+# compared against tests/visual/golden/. Needs a GL context — under CI
+# that means Xvfb+llvmpipe on Linux or the GPU runner elsewhere.
+if(TARGET cinder AND TARGET slc_layout)
+    add_executable(slc_visual WIN32 visual/visual_harness.cpp)
+    target_link_libraries(slc_visual PRIVATE slc::layout cinder)
+    slc_set_warnings(slc_visual)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/visual/golden/collage.png)
+        add_test(NAME VisualRegression
+                 COMMAND slc_visual --compare
+                     ${CMAKE_CURRENT_SOURCE_DIR}/visual/golden/collage.png)
+        set_tests_properties(VisualRegression PROPERTIES TIMEOUT 60)
+    endif()
+endif()
+
 # Windows host contract test (doc 9.3): real parent HWND + `/p` child.
 if(WIN32 AND TARGET slc_host_win)
     add_executable(slc_preview_harness host_win/preview_parent.cpp)

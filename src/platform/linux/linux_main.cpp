@@ -13,16 +13,23 @@
 #include "idle_watcher.h"
 #include "session.h"
 #include "control_dbus.h"
+#if defined(SLC_WAYLAND_IDLE)
+#include "wayland/wayland_idle.h"
+#endif
 
 #include "slc/common/env.h"
 #include "slc/common/logging.h"
 #include "slc/config/app_config.h"
 #include "slc/content/content_service.h"
 #include "slc/content/steam_local_provider.h"
+#include "slc/platform/credential.h"
 #include "slc/platform/paths.h"
 
 #include <QCoreApplication>
 #include <QProcess>
+#if defined(SLC_WAYLAND_IDLE)
+#include <QSocketNotifier>
+#endif
 
 #include <cstdio>
 #include <cstdlib>
@@ -31,13 +38,15 @@
 
 namespace {
 
-enum class Mode { Daemon, Run, Xss, Wallpaper, ListArtwork, Help };
+enum class Mode { Daemon, Run, Xss, Wallpaper, ListArtwork, StoreSgdbKey,
+                  Help };
 
 struct Args {
     Mode mode = Mode::Daemon;
     quint32 idleSec = 0;
     bool allowTestHooks = false;
     bool debugUi = false;
+    std::string sgdbKey;
 };
 
 Args parseArgs(int argc, char** argv)
@@ -61,6 +70,9 @@ Args parseArgs(int argc, char** argv)
             out.allowTestHooks = true;
         } else if (t == "--debug-ui") {
             out.debugUi = true;
+        } else if (t == "--store-sgdb-key" && i + 1 < argc) {
+            out.mode = Mode::StoreSgdbKey;
+            out.sgdbKey = argv[++i];
         } else if (t == "--help" || t == "-h") {
             out.mode = Mode::Help;
         }
@@ -126,12 +138,27 @@ int main(int argc, char** argv)
                    "  --idle-sec N    daemon: idle-time activation threshold\n"
                    "  --allow-test-hooks  honour SLC_TEST_* env vars\n"
                    "  --debug-ui    ImGui debug overlay (needs SLC_WITH_IMGUI)\n"
+                   "  --store-sgdb-key <key>  save SGDB key in the "
+                   "keyring (secret-tool)\n"
                    "  --list-artwork  print discovered artwork\n",
                    stdout);
         return 0;
 
     case Mode::ListArtwork:
         return diagnoseArtwork();
+
+    case Mode::StoreSgdbKey:
+        if (args.sgdbKey.empty()) {
+            std::fputs("usage: --store-sgdb-key <key>\n", stderr);
+            return 2;
+        }
+        if (!slc::platform::storeCredential("sgdb.apiKey", args.sgdbKey)) {
+            std::fputs("error: keyring write failed (secret-tool "
+                       "missing?)\n", stderr);
+            return 1;
+        }
+        std::puts("sgdb.apiKey stored in the session keyring");
+        return 0;
 
     case Mode::Run:
         return runScreensaverSession();
@@ -163,9 +190,6 @@ int main(int argc, char** argv)
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("slc-screensaverd"));
 
-    slc::host::IdleWatcher watcher;
-    watcher.setPollThresholdSeconds(args.idleSec);
-
     QProcess session;
     session.setProgram(QCoreApplication::applicationFilePath());
     // Forward the test-hook gate so hooks work inside spawned sessions too.
@@ -175,13 +199,53 @@ int main(int argc, char** argv)
                           QStringLiteral("--allow-test-hooks")}
             : QStringList{QStringLiteral("--run")});
 
-    QObject::connect(&watcher, &slc::host::IdleWatcher::activated, &app, [&] {
+    const auto spawnSession = [&] {
         if (session.state() == QProcess::Running) {
             return; // already showing
         }
         SLC_LOG_INFO("daemon: idle activation -> spawning --run session");
         session.start();
-    });
+    };
+
+    // Test hook: bound the daemon's life for CI smoke runs.
+    const auto armLifetimeHook = [&] {
+        if (const auto ms =
+                slc::env::getTestHook(slc::env::kTestIdleTimeoutVar)) {
+            QTimer::singleShot(
+                static_cast<int>(std::strtoul(ms->c_str(), nullptr, 10)),
+                &app, &QCoreApplication::quit);
+        }
+    };
+
+#if defined(SLC_WAYLAND_IDLE)
+    // §6.1.3 Path C: on Wayland the compositor knows real idle state —
+    // ext-idle-notify-v1 also honors idle inhibitors (video players etc.),
+    // which the DBus GetSessionIdleTime poll cannot see.
+    if (qEnvironmentVariableIsSet("WAYLAND_DISPLAY")) {
+        slc::platform::WaylandIdleNotifier wlIdle;
+        const quint32 timeoutSec = args.idleSec > 0 ? args.idleSec : 300;
+        if (wlIdle.start(timeoutSec * 1000, spawnSession, [] {})) {
+            QSocketNotifier notifier(wlIdle.fd(), QSocketNotifier::Read);
+            QObject::connect(&notifier, &QSocketNotifier::activated, &app,
+                             [&] { wlIdle.dispatch(); });
+            armLifetimeHook();
+            const int rc = app.exec();
+            if (session.state() == QProcess::Running) {
+                session.terminate();
+                session.waitForFinished(3000);
+            }
+            return rc;
+        }
+        SLC_LOG_INFO("wayland: ext-idle-notify-v1 unavailable, using "
+                     "DBus watcher");
+    }
+#endif
+
+    slc::host::IdleWatcher watcher;
+    watcher.setPollThresholdSeconds(args.idleSec);
+
+    QObject::connect(&watcher, &slc::host::IdleWatcher::activated, &app,
+                     spawnSession);
     QObject::connect(&session, &QProcess::errorOccurred, &app,
                      [](QProcess::ProcessError e) {
                          SLC_LOG_ERROR("daemon: session spawn failed ({})",
@@ -189,13 +253,7 @@ int main(int argc, char** argv)
                      });
 
     watcher.start();
-
-    // Test hook: bound the daemon's life for CI smoke runs.
-    if (const auto ms = slc::env::getTestHook(slc::env::kTestIdleTimeoutVar)) {
-        QTimer::singleShot(
-            static_cast<int>(std::strtoul(ms->c_str(), nullptr, 10)), &app,
-            &QCoreApplication::quit);
-    }
+    armLifetimeHook();
 
     const int rc = app.exec();
     if (session.state() == QProcess::Running) {

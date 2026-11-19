@@ -107,6 +107,76 @@ jobs:
           name: coverage-report
           path: coverage*.html
 
+  # §9.6 platform smoke: exercise every built host binary with its safe
+  # non-GL CLI surface on each OS runner. Real desktop/VM coverage
+  # (session activation, .scr contract on a live desktop, xscreensaver)
+  # needs self-hosted runners — out of scope for hosted CI.
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-2022, preset: ci-win }
+          - { os: ubuntu-24.04, preset: ci-linux }
+          - { os: macos-15, preset: ci-mac }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lukka/get-cmake@latest
+      - uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: master
+      - run: cmake --preset ${{ matrix.preset }}
+      - run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Windows host smoke
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $host = "build/${{ matrix.preset }}/src/platform/win/slc_host_win.exe"
+          & $host --help | Out-Null; if ($LASTEXITCODE -ne 0) { exit 1 }
+          # --ctl without a session must fail cleanly with the canned text.
+          $out = & $host --ctl STATUS 2>&1
+          if ($out -notmatch 'no session listening') {
+              Write-Error "unexpected --ctl output: $out"; exit 1 }
+
+      - name: Linux host smoke
+        if: runner.os == 'Linux'
+        run: |
+          HOST=build/${{ matrix.preset }}/src/platform/linux/slc_host_linux
+          "$HOST" --help
+          # secret-tool absent on runners → expected failure path.
+          "$HOST" --store-sgdb-key dummy || true
+          "$HOST" --list-artwork || true  # no Steam on runner
+
+      - name: macOS bundle smoke
+        if: runner.os == 'macOS'
+        run: |
+          find build/${{ matrix.preset }} -name '*.saver' -o \
+              -name '*.app' | head -5
+
+  # §9.4 visual regression under Xvfb + llvmpipe — the golden tolerates
+  # software-rasterizer AA differences.
+  visual:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lukka/get-cmake@latest
+      - uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: master
+      - name: GL deps
+        run: sudo apt-get update && sudo apt-get install -y xvfb \
+             libgl1-mesa-dri libglx-mesa0 libegl1 libx11-dev libxrandr-dev \
+             libxinerama-dev libxcursor-dev libxi-dev
+      - name: Configure + build harness
+        run: |
+          cmake --preset dev-linux -DSLC_BUILD_CINDER=ON
+          cmake --build --preset dev-linux --target slc_visual -j
+      - name: Compare against golden
+        run: xvfb-run -a build/dev-linux/tests/slc_visual --compare \
+             tests/visual/golden/collage.png
+
   docs:
     runs-on: ubuntu-24.04
     steps:

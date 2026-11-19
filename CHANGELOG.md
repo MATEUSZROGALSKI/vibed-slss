@@ -13,7 +13,16 @@ Regenerate with `git cliff` (config: `cliff.toml`).
   D-Bus adaptor on Linux; shared `ScreensaverApp::controlCommand`
   dispatch with a per-second JSON status snapshot
 - CI: Debug builds (dev-* presets) alongside Release on all 3 OSes,
-  advisory clang-tidy job, gcovr coverage job
+  advisory clang-tidy job, gcovr coverage job, per-OS smoke job,
+  Xvfb/llvmpipe visual-regression job
+- §9.4 visual regression: `slc_visual` harness renders a seeded
+  collage to FBO → PNG; `--compare` vs committed goldens
+  (`tests/visual/golden/`) with tolerance for rasterizer variance
+- §6.1.3 Path C: `ext-idle-notify-v1` idle watcher on Wayland
+  (compositor-negotiated, DBus fallback); honors idle inhibitors
+- §6.2 OS keychain for the SGDB key: Credential Manager (win),
+  secret-tool/libsecret (linux), Security framework (mac); env var
+  still takes precedence; `--store-sgdb-key` on both hosts
 - Optional ImGui debug overlay (`SLC_WITH_IMGUI`, `--debug-ui` or
   `advanced.debugUi`): FPS/frame-time, scene + decode-pipeline stats,
   live badges/blur/collage-animation toggles; text overlay remains as
