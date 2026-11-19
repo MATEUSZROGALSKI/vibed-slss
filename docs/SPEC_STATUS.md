@@ -17,7 +17,7 @@ Legend: ✅ implemented · 🔶 partial / deviates · ❌ not implemented · ➕
 | M4 — Collage animation | ✅ | Choreographer, cell animators, scene transitions, deterministic tests |
 | M5 — Linux | ✅ | Path A (DBus) + Path B (XSS) + Path C (`ext-idle-notify-v1`, compositor-negotiated with DBus fallback). `wlr-layer-shell` wallpaper ➕ |
 | M6 — macOS | 🔶 | Bundle, entitlements, universal binary, codesign/notarize hooks done; runtime validation pending (no Mac CI runner with GPU) |
-| M7 — Wallpaper shuffle | 🔶 | Win + Linux backends done (Linux exceeds spec: Cinnamon/xwallpaper too); **macOS backend missing** (stub) |
+| M7 — Wallpaper shuffle | ✅ | All 3 backends implemented (Win COM, Linux gsettings/qdbus/sway/feh/xwallpaper, macOS NSWorkspace); mac backend compile-verified only — runtime needs a Mac |
 
 ## Protocols & contracts
 
@@ -38,11 +38,11 @@ Legend: ✅ implemented · 🔶 partial / deviates · ❌ not implemented · ➕
 | §9.4 Visual regression (`tests/visual/` goldens) | ✅ | `slc_visual` harness — seeded FBO render → PNG, tolerance-bounded compare vs `golden/`; ctest + Xvfb/llvmpipe CI job |
 | §9.5 Benchmarks (Google Benchmark) | ✅ | `tests/bench/` — layout + VDF/config/pick suites |
 | §9.6 Test hooks (`SLC_TEST_*` behind `--allow-test-hooks`) | ✅ | `slc::env::getTestHook`/`testHookTruthy` gate all reads; flag forwarded to spawned sessions |
-| §8.4 CI static analysis (clang-tidy/cppcheck/`/analyze`) | 🔶 | Advisory clang-tidy job (report artifact, non-gating while codebase is cleaned up) |
+| §8.4 CI static analysis (clang-tidy/cppcheck/`/analyze`) | ✅ | Hard gate on PR-changed files (bugprone-*/clang-analyzer-*); full-tree report stays advisory |
 | Debug+Release CI builds | ✅ | ci-* (Release+Werror) + dev-* (Debug) across all 3 OSes |
-| Coverage tracking (G6 ≥70%) | 🔶 | gcovr report + HTML artifact on Linux; ≥70% threshold not yet enforced |
+| Coverage tracking (G6 ≥70%) | 🔶 | gcovr report + `--fail-under-line 40` floor on Linux; ratchet to 70 as baseline grows |
 | Nightly 8h soak | ✅ | `nightly-soak.yml` (llvmpipe/Xvfb + win) |
-| Platform smoke matrix §9.6 | 🔶 | Hosted-runner smoke job covers the CLI surface on all 3 OSes; live-desktop/session coverage still needs self-hosted runners |
+| Platform smoke matrix §9.6 | 🔶 | Hosted CLI smoke on all 3 OSes + `smoke-desktop` job ready for self-hosted runners (enable via `SLC_SELF_HOSTED_SMOKE` repo var) |
 
 ## Tooling & docs
 

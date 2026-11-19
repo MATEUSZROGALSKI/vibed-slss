@@ -23,6 +23,11 @@ Regenerate with `git cliff` (config: `cliff.toml`).
 - §6.2 OS keychain for the SGDB key: Credential Manager (win),
   secret-tool/libsecret (linux), Security framework (mac); env var
   still takes precedence; `--store-sgdb-key` on both hosts
+- macOS wallpaper backend (`NSWorkspace` setDesktopImageURL on every
+  screen) — completes §6.1.4; compile-only until validated on a Mac
+- CI: clang-tidy now hard-gates PR-changed files on
+  bugprone-*/clang-analyzer-*; coverage floor `--fail-under-line 40`;
+  `smoke-desktop` self-hosted scaffold (repo var `SLC_SELF_HOSTED_SMOKE`)
 - Optional ImGui debug overlay (`SLC_WITH_IMGUI`, `--debug-ui` or
   `advanced.debugUi`): FPS/frame-time, scene + decode-pipeline stats,
   live badges/blur/collage-animation toggles; text overlay remains as

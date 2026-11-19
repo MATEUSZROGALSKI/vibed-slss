@@ -69,9 +69,22 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y clang-tidy
       - name: Configure (compile DB, core only)
         run: cmake --preset dev-linux -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-      # Advisory for now: report violations, don't fail the build while the
-      # existing codebase is being cleaned up to .clang-tidy's checks.
-      - name: clang-tidy report
+      # Hard gate on NEW code: any .cpp touched by the PR/push must be
+      # clean for correctness-critical check groups. The full-codebase
+      # pass below stays advisory until the backlog is cleaned up.
+      - name: clang-tidy gate (changed files)
+        run: |
+          BASE=${{ github.event.pull_request.base.sha || github.event.before }}
+          git fetch --no-tags origin $BASE 2>/dev/null || true
+          CHANGED=$(git diff --name-only ${BASE}...HEAD 2>/dev/null \
+              | grep -E '^(src|tests)/.*\.(cpp|mm)$' || true)
+          if [ -z "$CHANGED" ]; then
+              echo "no changed C++ files"; exit 0
+          fi
+          echo "$CHANGED" | xargs clang-tidy -p build/dev-linux \
+              --warnings-as-errors='bugprone-*,clang-analyzer-*' \
+              --quiet || exit 1
+      - name: clang-tidy report (advisory, full tree)
         run: |
           find src tests -name '*.cpp' -print0 \
             | xargs -0 -n1 -P4 clang-tidy -p build/dev-linux \
@@ -98,10 +111,13 @@ jobs:
       - name: Run tests
         run: ctest --preset dev-linux --output-on-failure
       - name: Coverage report
+        # Initial floor at 40% (core-only); ratchet toward the G6 target
+        # of 70% as the number is measured and improved.
         run: |
           gcovr --root . --object-directory build/dev-linux \
                 --filter 'src/' --exclude 'src/platform' \
-                --txt --html-details coverage.html --print-summary
+                --txt --html-details coverage.html --print-summary \
+                --fail-under-line 40
       - uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -154,6 +170,46 @@ jobs:
         run: |
           find build/${{ matrix.preset }} -name '*.saver' -o \
               -name '*.app' | head -5
+
+  # §9.6 live-desktop smoke — real session activation, .scr contract,
+  # xscreensaver registration. Requires self-hosted runners with a real
+  # desktop; enable by adding a `self-hosted` runner and setting repo
+  # variable SLC_SELF_HOSTED_SMOKE=1.
+  smoke-desktop:
+    if: vars.SLC_SELF_HOSTED_SMOKE == '1'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lukka/get-cmake@latest
+      - uses: lukka/run-vcpkg@v11
+      - run: cmake --preset dev-${{ runner.os == 'Windows' && 'win' || 'linux' }}
+      - run: cmake --build --preset dev-${{ runner.os == 'Windows' && 'win' || 'linux' }}
+      - name: Live session smoke (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $host = "build/dev-win/src/platform/win/slc_host_win.exe"
+          # Fullscreen session for 5s, then STATUS through the pipe.
+          $p = Start-Process $host -ArgumentList '/s' -PassThru
+          Start-Sleep 5
+          & $host --ctl STATUS
+          & $host --ctl RELOAD
+          Stop-Process -Id $p.Id -Force
+
+      - name: Live session smoke (Linux/Xvfb)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y xvfb
+          HOST=build/dev-linux/src/platform/linux/slc_host_linux
+          xvfb-run -a "$HOST" --run &
+          sleep 5
+          busctl --user call io.github.slc.Control \
+              /io/github/slc/Control io.github.slc.Control GetStatus || true
+          kill %1 || true
 
   # §9.4 visual regression under Xvfb + llvmpipe — the golden tolerates
   # software-rasterizer AA differences.
