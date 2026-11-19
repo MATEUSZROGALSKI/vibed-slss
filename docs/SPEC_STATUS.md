@@ -40,7 +40,7 @@ Legend: ✅ implemented · 🔶 partial / deviates · ❌ not implemented · ➕
 | §9.6 Test hooks (`SLC_TEST_*` behind `--allow-test-hooks`) | ✅ | `slc::env::getTestHook`/`testHookTruthy` gate all reads; flag forwarded to spawned sessions |
 | §8.4 CI static analysis (clang-tidy/cppcheck/`/analyze`) | ✅ | Hard gate on PR-changed files (bugprone-*/clang-analyzer-*); full-tree report stays advisory. clang-tidy 21 verified locally (WSL): all in-DB core TUs clean |
 | Debug+Release CI builds | ✅ | ci-* (Release+Werror) + dev-* (Debug) across all 3 OSes |
-| Coverage tracking (G6 ≥70%) | 🔶 | gcovr report + `--fail-under-line 40` floor on Linux; ratchet to 70 as baseline grows |
+| Coverage tracking (G6 ≥70%) | ✅ | gcovr report + `--fail-under-line 70` floor on Linux; measured ~82% core coverage |
 | Nightly 8h soak | ✅ | `nightly-soak.yml` (llvmpipe/Xvfb + win) |
 | Platform smoke matrix §9.6 | 🔶 | Hosted CLI smoke on all 3 OSes + `smoke-desktop` job ready for self-hosted runners (enable via `SLC_SELF_HOSTED_SMOKE` repo var) |
 

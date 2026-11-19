@@ -111,13 +111,14 @@ jobs:
       - name: Run tests
         run: ctest --preset dev-linux --output-on-failure
       - name: Coverage report
-        # Initial floor at 40% (core-only); ratchet toward the G6 target
-        # of 70% as the number is measured and improved.
+        # G6 target: >=70% line coverage on core. Measured ~82%
+        # (2026-02); floor kept at 70 with margin for runner variance.
         run: |
           gcovr --root . --object-directory build/dev-linux \
                 --filter 'src/' --exclude 'src/platform' \
+                --gcov-ignore-errors=no_working_dir_found \
                 --txt --html-details coverage.html --print-summary \
-                --fail-under-line 40
+                --fail-under-line 70
       - uses: actions/upload-artifact@v4
         with:
           name: coverage-report

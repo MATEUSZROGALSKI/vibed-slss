@@ -6,12 +6,19 @@ add_executable(slc_unit_tests
     unit/test_artwork_cache.cpp
     unit/test_artwork_pick.cpp
     unit/test_config.cpp
+    unit/test_content_service.cpp
+    unit/test_credential.cpp
+    unit/test_env.cpp
+    unit/test_error.cpp
     unit/test_hltb.cpp
     unit/test_image_quality.cpp
+    unit/test_logging.cpp
+    unit/test_paths.cpp
     unit/test_pick_queue.cpp
     unit/test_sgdb.cpp
     unit/test_steam_local_provider.cpp
     unit/test_steam_locator.cpp
+    unit/test_transport_factory.cpp
     unit/test_vdf.cpp
 )
 
@@ -33,6 +40,9 @@ target_link_libraries(slc_unit_tests PRIVATE
     GTest::gtest
     GTest::gtest_main
 )
+if(TARGET slc_enrichment)
+    target_link_libraries(slc_unit_tests PRIVATE slc::enrichment)
+endif()
 slc_set_warnings(slc_unit_tests)
 
 target_compile_definitions(slc_unit_tests PRIVATE
@@ -117,6 +127,28 @@ if(TARGET cinder AND TARGET slc_layout)
                      ${CMAKE_CURRENT_SOURCE_DIR}/visual/golden/collage.png)
         set_tests_properties(VisualRegression PROPERTIES TIMEOUT 60)
     endif()
+endif()
+
+# wallpaperd CLI coverage: --once exits cleanly against an empty library,
+# unknown args print usage and exit non-zero. HOME is sandboxed so the
+# daemon's log/cache dirs stay inside the build tree.
+if(TARGET slc_wallpaperd)
+    # SLC_STEAM_ROOT points at an empty dir and SLC_CONFIG_PATH at a
+    # nonexistent file so discovery yields nothing — the daemon exits
+    # before any backend->setWallpaper call on every OS.
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/wallpaperd-home)
+    set(WPD_ENV "HOME=${CMAKE_CURRENT_BINARY_DIR}/wallpaperd-home;SLC_STEAM_ROOT=${CMAKE_CURRENT_BINARY_DIR}/wallpaperd-home;SLC_CONFIG_PATH=${CMAKE_CURRENT_BINARY_DIR}/nonexistent.json;XDG_CURRENT_DESKTOP=test-none")
+    add_test(NAME WallpaperdEmptyLibrary
+             COMMAND slc_wallpaperd --once)
+    set_tests_properties(WallpaperdEmptyLibrary PROPERTIES
+        TIMEOUT 30
+        ENVIRONMENT "${WPD_ENV}")
+    add_test(NAME WallpaperdUsageError
+             COMMAND slc_wallpaperd --bogus)
+    set_tests_properties(WallpaperdUsageError PROPERTIES
+        WILL_FAIL TRUE
+        TIMEOUT 30
+        ENVIRONMENT "${WPD_ENV}")
 endif()
 
 # Windows host contract test (doc 9.3): real parent HWND + `/p` child.

@@ -19,6 +19,13 @@ Regenerate with `git cliff` (config: `cliff.toml`).
   collage to FBO → PNG; `--compare` vs committed goldens
   (`tests/visual/golden/`) with tolerance for rasterizer variance
 
+- Unit coverage for previously-untested core: env/test-hook gate,
+  error strings, file logging, ContentService aggregation/dedup/
+  cancel, platform paths (XDG overrides, Steam-root detection),
+  OS credential roundtrip, HTTP transport factory, and wallpaperd
+  CLI (empty-library + usage-error) — core coverage now ~82%;
+  CI floor raised from 40% to the G6 target of 70%
+
 ### Fixed
 
 - clang-tidy gate findings in core: implicit widening in file-size
