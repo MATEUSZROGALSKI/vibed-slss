@@ -20,3 +20,8 @@ int runWallpaperSession()
 }
 
 void setSessionDebugUi(bool /*enabled*/) {}
+
+namespace slc::platform {
+void startControlServer() {}
+void stopControlServer() {}
+} // namespace slc::platform

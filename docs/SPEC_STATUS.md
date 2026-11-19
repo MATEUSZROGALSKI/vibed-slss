@@ -25,7 +25,7 @@ Legend: ✅ implemented · 🔶 partial / deviates · ❌ not implemented · ➕
 |---|---|---|
 | Windows `.scr` arg contract (`/s /c /p /a /0..9`, mutex, GUI subsystem) | ✅ | WorkerW live-wallpaper embedding ➕ |
 | SteamGridDB §6.2 (token bucket, 429/Retry-After, backoff, ETag, 7-day cache, silent degradation) | ✅ | API key via env var only — **no OS keychain** (CredMan/Keychain/libsecret) ❌ |
-| §6.5 IPC control channel (pipe/DBus `io.github.slc.Control`: Reload/GetStatus/SetConfig) | ❌ | `config.json` mtime polling covers Reload; no status channel |
+| §6.5 IPC control channel (pipe/DBus `io.github.slc.Control`: Reload/GetStatus/SetConfig) | ✅ | Win: `\\.\pipe\io.github.slc.Control` + `--ctl` client; Linux: session-bus adaptor, drive via `busctl`; shared `ScreensaverApp::controlCommand` dispatch |
 | §6.3 module boundary rules (Result<T>, mt19937 injection, stop_token) | ✅ | |
 | §6.4 logging (spdlog rotating, silent stdout) | ✅ | |
 
@@ -38,9 +38,9 @@ Legend: ✅ implemented · 🔶 partial / deviates · ❌ not implemented · ➕
 | §9.4 Visual regression (`tests/visual/` goldens) | ❌ | |
 | §9.5 Benchmarks (Google Benchmark) | ✅ | `tests/bench/` — layout + VDF/config/pick suites |
 | §9.6 Test hooks (`SLC_TEST_*` behind `--allow-test-hooks`) | ✅ | `slc::env::getTestHook`/`testHookTruthy` gate all reads; flag forwarded to spawned sessions |
-| §8.4 CI static analysis (clang-tidy/cppcheck/`/analyze`) | ❌ | CI: build+test, format, isolation check only |
-| Debug+Release CI builds | ❌ | Release only |
-| Coverage tracking (G6 ≥70%) | ❌ | |
+| §8.4 CI static analysis (clang-tidy/cppcheck/`/analyze`) | 🔶 | Advisory clang-tidy job (report artifact, non-gating while codebase is cleaned up) |
+| Debug+Release CI builds | ✅ | ci-* (Release+Werror) + dev-* (Debug) across all 3 OSes |
+| Coverage tracking (G6 ≥70%) | 🔶 | gcovr report + HTML artifact on Linux; ≥70% threshold not yet enforced |
 | Nightly 8h soak | ✅ | `nightly-soak.yml` (llvmpipe/Xvfb + win) |
 | Platform smoke matrix §9.6 | ❌ | No self-hosted/VM runners |
 

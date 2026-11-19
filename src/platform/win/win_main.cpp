@@ -13,6 +13,7 @@
 // win_cinder_stub.cpp runs the discovery diagnostic instead.
 
 #include "win_session.h"
+#include "control_pipe.h"
 
 #include "slc/common/env.h"
 #include "slc/common/logging.h"
@@ -44,6 +45,7 @@ enum class Mode {
     ChangePassword,
     ListArtwork,
     Wallpaper,
+    Control,
     Help
 };
 
@@ -52,6 +54,7 @@ struct Args {
     HWND previewParent = nullptr;
     bool allowTestHooks = false;
     bool debugUi = false;
+    std::wstring ctlCmd;
 };
 
 Args parseArgs(const std::wstring& cmdline)
@@ -92,6 +95,18 @@ Args parseArgs(const std::wstring& cmdline)
             out.allowTestHooks = true;
         } else if (t == L"--debug-ui") {
             out.debugUi = true;
+        } else if (t == L"--ctl") {
+            // Everything after --ctl is the command verbatim — SETCONFIG
+            // takes a raw JSON payload that itself contains spaces, so
+            // consume the rest of the line and stop tokenising.
+            out.mode = Mode::Control;
+            std::wstring rest;
+            std::getline(ss, rest);
+            while (!rest.empty() && rest.front() == L' ') {
+                rest.erase(rest.begin());
+            }
+            out.ctlCmd = std::move(rest);
+            break;
         } else if (t == L"--wallpaper") {
             out.mode = Mode::Wallpaper;
         } else if (t == L"--help" || t == L"-h") {
@@ -154,7 +169,9 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR cmdline, int)
                    "  --wallpaper   live wallpaper behind desktop icons\n"
                    "  --list-artwork  print discovered artwork\n"
                    "  --allow-test-hooks  honour SLC_TEST_* env vars\n"
-                   "  --debug-ui    ImGui debug overlay (needs SLC_WITH_IMGUI)\n",
+                   "  --debug-ui    ImGui debug overlay (needs SLC_WITH_IMGUI)\n"
+                   "  --ctl <CMD>   control channel: RELOAD | STATUS |"
+                   " SETCONFIG <json>\n",
                    stdout);
         return 0;
 
@@ -212,12 +229,34 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR cmdline, int)
             CloseHandle(mutex);
             return 0;
         }
+        slc::platform::startControlServer();
         const int rc = runWallpaperSession();
+        slc::platform::stopControlServer();
         if (mutex != nullptr) {
             ReleaseMutex(mutex);
             CloseHandle(mutex);
         }
         return rc;
+    }
+
+    case Mode::Control: {
+        // §6.5 client: one command in, one reply out, then exit.
+        if (args.ctlCmd.empty()) {
+            std::fputs("usage: --ctl RELOAD|STATUS|SETCONFIG <json>\n",
+                       stderr);
+            return 2;
+        }
+        // UTF-8 so SETCONFIG payloads keep non-ASCII paths intact.
+        std::string cmd(
+            WideCharToMultiByte(CP_UTF8, 0, args.ctlCmd.c_str(), -1,
+                                nullptr, 0, nullptr, nullptr) - 1,
+            '\0');
+        WideCharToMultiByte(CP_UTF8, 0, args.ctlCmd.c_str(), -1,
+                            cmd.data(), static_cast<int>(cmd.size() + 1),
+                            nullptr, nullptr);
+        const std::string reply = slc::platform::sendControlCommand(cmd);
+        std::puts(reply.c_str());
+        return reply.rfind("error", 0) == 0 ? 1 : 0;
     }
 
     case Mode::Preview:
@@ -232,8 +271,16 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR cmdline, int)
             CloseHandle(mutex);
             return 0;
         }
+        // Preview sessions run per-monitor under explorer's control —
+        // only the real sessions own the control pipe.
+        if (args.mode == Mode::Run) {
+            slc::platform::startControlServer();
+        }
         const int rc = runScreensaverSession(args.mode == Mode::Preview,
                                              args.previewParent);
+        if (args.mode == Mode::Run) {
+            slc::platform::stopControlServer();
+        }
         if (mutex != nullptr) {
             ReleaseMutex(mutex);
             CloseHandle(mutex);

@@ -17,6 +17,7 @@
 #include <cinder/ImageIo.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -63,6 +64,21 @@ bool& debugUiSlot()
     return slot;
 }
 
+// §6.5 control channel: cross-thread requests land here; the app's own
+// ~1s tick drains them so all config application stays on the GL thread.
+std::atomic<bool>& reloadRequestSlot()
+{
+    static std::atomic<bool> slot{false};
+    return slot;
+}
+
+std::atomic<std::shared_ptr<const std::string>>& statusSlot()
+{
+    static std::atomic<std::shared_ptr<const std::string>> slot{
+        std::make_shared<const std::string>(R"({"state":"boot"})")};
+    return slot;
+}
+
 std::function<void()>& frameEndHookSlot()
 {
     static std::function<void()> slot;
@@ -88,6 +104,45 @@ void ScreensaverApp::setIgnoreReducedMotion(bool ignore)
 void ScreensaverApp::setDebugUi(bool enabled)
 {
     debugUiSlot() = enabled;
+}
+
+void ScreensaverApp::requestConfigReload()
+{
+    reloadRequestSlot().store(true, std::memory_order_relaxed);
+}
+
+std::string ScreensaverApp::statusJson()
+{
+    if (const auto snap = statusSlot().load(); snap) {
+        return *snap;
+    }
+    return R"({"state":"boot"})";
+}
+
+std::string ScreensaverApp::controlCommand(std::string_view command)
+{
+    if (command == "RELOAD") {
+        requestConfigReload();
+        return "ok";
+    }
+    if (command == "STATUS" || command == "GETSTATUS") {
+        return statusJson();
+    }
+    constexpr std::string_view kSet = "SETCONFIG ";
+    if (command.substr(0, kSet.size()) == kSet) {
+        const auto path = config::defaultConfigPath();
+        std::error_code ec;
+        std::filesystem::create_directories(path.parent_path(), ec);
+        std::ofstream out(path, std::ios::binary | std::ios::trunc);
+        out << command.substr(kSet.size());
+        out.flush();
+        if (!out) {
+            return "error writing config";
+        }
+        requestConfigReload();
+        return "ok";
+    }
+    return "error unknown command";
 }
 
 void ScreensaverApp::setFrameEndHook(std::function<void()> hook)
@@ -158,6 +213,45 @@ void ScreensaverApp::pollConfigReload()
     auto next = config::loadConfig(m_configPath);
     SLC_LOG_INFO("config changed on disk — applying");
     applyConfig(std::move(next));
+}
+
+std::string ScreensaverApp::buildStatusJson()
+{
+    const char* state = m_state == State::Loading  ? "loading"
+                        : m_state == State::Running ? "running"
+                                                    : "fallback";
+    const char* scene = m_scene == SceneKind::Single  ? "single"
+                        : m_scene == SceneKind::Collage ? "collage"
+                                                        : "matrix";
+    std::size_t decodeQ = 0;
+    std::size_t inflight = 0;
+    std::size_t failed = 0;
+    {
+        std::lock_guard lock(m_decodeMutex);
+        decodeQ = m_decodeQueue.size();
+        inflight = m_inflight.size();
+    }
+    {
+        std::lock_guard lock(m_failedMutex);
+        failed = m_failed.size();
+    }
+    float fps = 0.0F;
+    if (!m_frameTimes.empty()) {
+        std::vector<float> dts(m_frameTimes.begin(), m_frameTimes.end());
+        std::sort(dts.begin(), dts.end());
+        const float med = dts[dts.size() / 2];
+        fps = med > 0.0F ? 1.0F / med : 0.0F;
+    }
+    char buf[384];
+    std::snprintf(
+        buf, sizeof(buf),
+        R"({"state":"%s","scene":"%s","sceneIndex":%zu,"cells":%zu,)"
+        R"("playlist":%zu,"resident":%zu,"decodeQueue":%zu,)"
+        R"("inflight":%zu,"zombies":%d,"failed":%zu,"fps":%.1f})",
+        state, scene, m_sceneIndex, m_cells.size(), playlistSize(),
+        m_pool ? m_pool->residentCount() : 0u, decodeQ, inflight,
+        m_decodeZombies.load(), failed, static_cast<double>(fps));
+    return buf;
 }
 
 void ScreensaverApp::applyConfig(config::AppConfig next)
@@ -399,7 +493,19 @@ void ScreensaverApp::update()
     m_configCheckSec += dt;
     if (m_configCheckSec >= 1.0) {
         m_configCheckSec = 0.0;
+        // Control-channel reload beats the mtime poll — SetConfig writes
+        // may land inside the same filesystem timestamp granularity.
+        if (reloadRequestSlot().exchange(false)) {
+            auto next = config::loadConfig(m_configPath);
+            std::error_code ec;
+            m_configMtime =
+                std::filesystem::last_write_time(m_configPath, ec);
+            SLC_LOG_INFO("config reload via control channel");
+            applyConfig(std::move(next));
+        }
         pollConfigReload();
+        statusSlot().store(
+            std::make_shared<const std::string>(buildStatusJson()));
         std::size_t decodeQ = 0;
         {
             std::lock_guard lock(m_decodeMutex);

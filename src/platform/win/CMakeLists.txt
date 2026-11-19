@@ -1,4 +1,4 @@
-add_executable(slc_host_win WIN32 win_main.cpp)
+add_executable(slc_host_win WIN32 win_main.cpp control_pipe.cpp)
 
 target_link_libraries(slc_host_win PRIVATE
     slc::appconfig
@@ -8,7 +8,7 @@ target_link_libraries(slc_host_win PRIVATE
 )
 
 if(SLC_BUILD_CINDER)
-    target_sources(slc_host_win PRIVATE win_cinder.cpp)
+    target_sources(slc_host_win PRIVATE win_cinder.cpp control_server.cpp)
     target_link_libraries(slc_host_win PRIVATE slc::app cinder)
 else()
     target_sources(slc_host_win PRIVATE win_cinder_stub.cpp)

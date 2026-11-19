@@ -99,6 +99,19 @@ class ScreensaverApp : public ScreensaverAppBase {
     /// config enables it too. No-op in builds without SLC_WITH_IMGUI.
     static void setDebugUi(bool enabled);
 
+    /// Asks the running instance to re-read config.json on its next ~1s
+    /// tick (§6.5 control channel). Thread-safe; no-op without a session.
+    static void requestConfigReload();
+
+    /// Last per-second status snapshot as JSON ("boot" until first tick).
+    /// Cheap to call from any thread — reads an atomically published cache.
+    [[nodiscard]] static std::string statusJson();
+
+    /// §6.5 control command dispatcher shared by every transport (named
+    /// pipe on Windows, D-Bus on Linux): "RELOAD", "STATUS", or
+    /// "SETCONFIG <json>". Returns "ok", a JSON payload, or "error <msg>".
+    [[nodiscard]] static std::string controlCommand(std::string_view command);
+
     void setup() override;
     void update() override;
     void draw() override;
@@ -276,6 +289,8 @@ class ScreensaverApp : public ScreensaverAppBase {
     /// active item; past kDecodeStuckSec it marks the key failed and
     /// spawns a replacement worker so the queue keeps draining.
     void spawnDecodeWorker();
+    /// Builds the status snapshot published to statusJson() each tick.
+    std::string buildStatusJson();
     /// config.json watch: reload + apply on mtime change (~1s poll).
     void pollConfigReload();
     void applyConfig(config::AppConfig next);

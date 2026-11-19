@@ -8,6 +8,12 @@ Regenerate with `git cliff` (config: `cliff.toml`).
 
 ### Added
 
+- §6.5 IPC control channel: `\\.\pipe\io.github.slc.Control` on Windows
+  (`--ctl RELOAD|STATUS|SETCONFIG <json>`) and `io.github.slc.Control`
+  D-Bus adaptor on Linux; shared `ScreensaverApp::controlCommand`
+  dispatch with a per-second JSON status snapshot
+- CI: Debug builds (dev-* presets) alongside Release on all 3 OSes,
+  advisory clang-tidy job, gcovr coverage job
 - Optional ImGui debug overlay (`SLC_WITH_IMGUI`, `--debug-ui` or
   `advanced.debugUi`): FPS/frame-time, scene + decode-pipeline stats,
   live badges/blur/collage-animation toggles; text overlay remains as

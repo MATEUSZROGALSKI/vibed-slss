@@ -16,7 +16,7 @@ add_executable(slc_host_linux
 set_target_properties(slc_host_linux PROPERTIES AUTOMOC ON)
 
 if(SLC_BUILD_CINDER)
-    target_sources(slc_host_linux PRIVATE session_cinder.cpp)
+    target_sources(slc_host_linux PRIVATE session_cinder.cpp control_dbus.cpp)
     target_link_libraries(slc_host_linux PRIVATE slc::app cinder)
     # session_cinder reparents into $XSCREENSAVER_WINDOW for --xss mode and
     # drives the X11 live-wallpaper desktop window.

@@ -108,6 +108,15 @@ on badges as they resolve.
 | `cacheDir` | auto | Override cache location. |
 | `debugUi` | `false` | On-screen debug overlay. Builds with `SLC_WITH_IMGUI` show a full stats window; pass `--debug-ui` to enable it for one run. |
 
+## Control channel
+
+A running session (screensaver or live wallpaper) exposes three commands:
+
+- Windows: `slc_host_win.exe --ctl STATUS` (also `RELOAD`, `SETCONFIG <json>`)
+- Linux: `busctl --user call io.github.slc.Control /io/github/slc/Control io.github.slc.Control GetStatus` (`Reload`, `SetConfig s`)
+
+`STATUS`/`GetStatus` returns a one-line JSON snapshot (state, scene, playlist, resident textures, decode queue, fps). `RELOAD`/`Reload` forces an immediate config re-read; `SETCONFIG`/`SetConfig` replaces `config.json` and reloads it.
+
 ## The badge
 
 Each scene shows a card with the game's info, faded in once the motion

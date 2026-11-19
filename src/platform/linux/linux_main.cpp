@@ -12,6 +12,7 @@
 
 #include "idle_watcher.h"
 #include "session.h"
+#include "control_dbus.h"
 
 #include "slc/common/env.h"
 #include "slc/common/logging.h"
@@ -108,6 +109,12 @@ int main(int argc, char** argv)
         setSessionDebugUi(true);
     }
     SLC_LOG_INFO("slc_host_linux start, mode={}", static_cast<int>(args.mode));
+
+    // §6.5 control channel: expose io.github.slc.Control on the session
+    // bus for every long-lived mode (diagnostics/CLI exits don't need it).
+    if (args.mode != Mode::Help && args.mode != Mode::ListArtwork) {
+        slc::platform::registerControlAdaptor();
+    }
 
     switch (args.mode) {
     case Mode::Help:

@@ -37,3 +37,7 @@ int runWallpaperSession()
 }
 
 void setSessionDebugUi(bool /*enabled*/) {}
+
+namespace slc::platform {
+void registerControlAdaptor() {}
+} // namespace slc::platform
