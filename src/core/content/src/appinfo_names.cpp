@@ -30,7 +30,7 @@ namespace {
 constexpr std::uint32_t kMagicV39 = 0x07564427;
 constexpr std::uint32_t kMagicV40 = 0x07564428;
 constexpr std::uint32_t kMagicV41 = 0x07564429;
-constexpr std::size_t kMaxFileSize = 256u * 1024u * 1024u;
+constexpr std::size_t kMaxFileSize = std::size_t{256} * 1024 * 1024;
 constexpr int kMaxDepth = 8;
 constexpr std::size_t kMaxTableStrings = 1u << 20;
 

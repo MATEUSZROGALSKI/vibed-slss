@@ -192,6 +192,7 @@ std::optional<std::string> HltbResolver::searchToken(std::stop_token stop)
         try {
             m_token = nlohmann::json::parse(r->body).value("token", "");
         } catch (const std::exception&) {
+            SLC_LOG_DEBUG("hltb: malformed token response");
         }
     }
     if (m_token.empty()) {
@@ -238,6 +239,8 @@ std::optional<std::uint32_t> HltbResolver::query(const std::string& gameName,
                 return pickMinutes(j["data"], gameName);
             }
         } catch (const std::exception&) {
+            SLC_LOG_DEBUG("hltb: malformed search response for \"{}\"",
+                          gameName);
         }
         return std::nullopt; // valid response, no match — negative
     }

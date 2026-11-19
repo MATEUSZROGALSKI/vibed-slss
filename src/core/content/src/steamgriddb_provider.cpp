@@ -119,6 +119,7 @@ std::optional<std::string> SteamGridDbProvider::pickImageUrl(
             }
         }
     } catch (const std::exception&) {
+        SLC_LOG_DEBUG("sgdb: malformed grids response");
     }
     return std::nullopt;
 }
@@ -165,6 +166,7 @@ Result<HttpResponse> SteamGridDbProvider::request(const HttpRequest& req,
                         static_cast<long long>(
                             m_options.maxRetryAfter.count())));
                 } catch (const std::exception&) {
+                    SLC_LOG_DEBUG("sgdb: bad Retry-After value '{}'", *ra);
                 }
             }
         }

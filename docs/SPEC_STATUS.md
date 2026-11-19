@@ -38,7 +38,7 @@ Legend: ✅ implemented · 🔶 partial / deviates · ❌ not implemented · ➕
 | §9.4 Visual regression (`tests/visual/` goldens) | ✅ | `slc_visual` harness — seeded FBO render → PNG, tolerance-bounded compare vs `golden/`; ctest + Xvfb/llvmpipe CI job |
 | §9.5 Benchmarks (Google Benchmark) | ✅ | `tests/bench/` — layout + VDF/config/pick suites |
 | §9.6 Test hooks (`SLC_TEST_*` behind `--allow-test-hooks`) | ✅ | `slc::env::getTestHook`/`testHookTruthy` gate all reads; flag forwarded to spawned sessions |
-| §8.4 CI static analysis (clang-tidy/cppcheck/`/analyze`) | ✅ | Hard gate on PR-changed files (bugprone-*/clang-analyzer-*); full-tree report stays advisory |
+| §8.4 CI static analysis (clang-tidy/cppcheck/`/analyze`) | ✅ | Hard gate on PR-changed files (bugprone-*/clang-analyzer-*); full-tree report stays advisory. clang-tidy 21 verified locally (WSL): all in-DB core TUs clean |
 | Debug+Release CI builds | ✅ | ci-* (Release+Werror) + dev-* (Debug) across all 3 OSes |
 | Coverage tracking (G6 ≥70%) | 🔶 | gcovr report + `--fail-under-line 40` floor on Linux; ratchet to 70 as baseline grows |
 | Nightly 8h soak | ✅ | `nightly-soak.yml` (llvmpipe/Xvfb + win) |

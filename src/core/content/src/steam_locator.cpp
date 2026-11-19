@@ -149,7 +149,7 @@ std::optional<std::vector<std::uint8_t>> readWholeFile(
 {
     std::error_code ec;
     const auto size = std::filesystem::file_size(path, ec);
-    if (ec || size == 0 || size > 64u * 1024u * 1024u) {
+    if (ec || size == 0 || size > std::uintmax_t{64} * 1024 * 1024) {
         return std::nullopt;
     }
     std::ifstream in(path, std::ios::binary);
@@ -274,6 +274,8 @@ std::optional<std::string> parseMostRecentUser(const std::filesystem::path& stea
         try {
             ts = std::stoull(std::string(user.get("timestamp")));
         } catch (...) {
+            SLC_LOG_DEBUG("loginusers: non-numeric timestamp '{}'",
+                          std::string(user.get("timestamp")));
         }
         if (ts > newestTs) {
             newestTs = ts;
@@ -297,6 +299,7 @@ std::optional<std::string> parseMostRecentUser(const std::filesystem::path& stea
         }
     } catch (...) {
         // Fall through and return the raw key.
+        SLC_LOG_DEBUG("loginusers: non-numeric key '{}'", user->key);
     }
     return user->key;
 }

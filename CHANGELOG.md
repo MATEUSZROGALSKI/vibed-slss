@@ -18,6 +18,13 @@ Regenerate with `git cliff` (config: `cliff.toml`).
 - §9.4 visual regression: `slc_visual` harness renders a seeded
   collage to FBO → PNG; `--compare` vs committed goldens
   (`tests/visual/golden/`) with tolerance for rasterizer variance
+
+### Fixed
+
+- clang-tidy gate findings in core: implicit widening in file-size
+  limits (logging/appinfo_names/steam_locator), a cloned conditional
+  branch in config seed parsing, and silent empty catches in
+  hltb/steamgriddb/steam_locator — now logged at debug level
 - §6.1.3 Path C: `ext-idle-notify-v1` idle watcher on Wayland
   (compositor-negotiated, DBus fallback); honors idle inhibitors
 - §6.2 OS keychain for the SGDB key: Credential Manager (win),

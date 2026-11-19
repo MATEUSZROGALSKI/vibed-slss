@@ -99,9 +99,7 @@ AppConfig fromJson(const json& doc)
         readScalar(s, "cellCountMin", cfg.layout.cellCountMin);
         readScalar(s, "gutter", cfg.layout.gutter);
         readScalar(s, "collageProbability", cfg.layout.collageProbability);
-        if (s.contains("seed") && s["seed"].is_number_unsigned()) {
-            cfg.layout.seed = s["seed"].get<std::uint64_t>();
-        } else if (s.contains("seed") && s["seed"].is_number_integer()) {
+        if (s.contains("seed") && s["seed"].is_number_integer()) {
             cfg.layout.seed = s["seed"].get<std::uint64_t>();
         } // "random" or absent -> nullopt
     }

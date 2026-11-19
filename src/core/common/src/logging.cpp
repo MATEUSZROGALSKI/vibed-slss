@@ -10,7 +10,7 @@
 namespace slc::logging {
 namespace {
 
-constexpr std::size_t kMaxFileSizeBytes = 2 * 1024 * 1024;
+constexpr std::size_t kMaxFileSizeBytes = std::size_t{2} * 1024 * 1024;
 constexpr std::size_t kMaxFiles = 5;
 constexpr std::string_view kPattern = "%Y-%m-%dT%H:%M:%S.%e%z [%l] [%t] %n: %v";
 constexpr std::string_view kDefaultLevel = "info";
