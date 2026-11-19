@@ -12,7 +12,7 @@ Legend: ✅ implemented · 🔶 partial / deviates · ❌ not implemented · ➕
 |---|---|---|
 | M0 — Foundations (presets, vcpkg, Cinder fetch, gtest/ctest, CI, lint tooling) | ✅ | |
 | M1 — Shuffle & switch (SteamLocalProvider, TexturePool, ArtworkCache, cycling + crossfade) | ✅ | |
-| M2 — Ken Burns entrance | ✅ | Golden-image exit criterion unmet (no visual tests) |
+| M2 — Ken Burns entrance | ✅ | Visual harness now covers seeded render determinism (§9.4); Ken-Burns-specific goldens can extend `tests/visual/` |
 | M3 — Collage layout | ✅ ➕ | 7 strategies vs spec's 2 (grid, masonry, spiral, spotlight, bsp, rows, mosaic) + matrix choreographer |
 | M4 — Collage animation | ✅ | Choreographer, cell animators, scene transitions, deterministic tests |
 | M5 — Linux | ✅ | Path A (DBus) + Path B (XSS) + Path C (`ext-idle-notify-v1`, compositor-negotiated with DBus fallback). `wlr-layer-shell` wallpaper ➕ |
