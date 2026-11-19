@@ -26,10 +26,11 @@ Other presets: `ci-*` (warnings-as-errors, core-only coverage) and
 | `SLC_BUILD_CINDER` | OFF | Compile full libcinder + the GL modules (anim/render/app) and real host paths |
 | `SLC_BUILD_QT_TOOLS` | OFF | Qt configurator + Linux Qt host |
 | `SLC_WITH_CPR` | OFF | cpr/OpenSSL HTTP transport for SteamGridDB enrichment |
+| `SLC_WITH_IMGUI` | OFF | ImGui debug overlay (`--debug-ui` / `advanced.debugUi`) |
 | `SLC_WARNINGS_AS_ERRORS` | OFF | `-Werror` / `/WX` |
 
 vcpkg manifest features (`vcpkg.json`): `tests`, `enrichment`, `gui`,
-`parallel` (TBB decode pool).
+`parallel` (TBB decode pool), `debug-ui` (imgui + opengl3 binding).
 
 ## Architecture rules
 
@@ -133,6 +134,7 @@ Runtime env overrides: `SLC_STEAM_ROOT`, `SLC_CONFIG_PATH`, `SLC_LOG_LEVEL`,
 
 ## Review checklist (before submitting)
 
+- [ ] `docs/SPEC_STATUS.md` updated if the change affects spec coverage
 - [ ] `core/` diff has no `#include <windows.h>`, `<Qt…>`, `<AppKit/…>`, `<dbus/…>`
 - [ ] New public API is documented and unit-tested
 - [ ] New deps added to `vcpkg.json` (never `glm` — see Gotchas)

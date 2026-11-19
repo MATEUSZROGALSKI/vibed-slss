@@ -359,3 +359,8 @@ int runWallpaperSession()
         renderer, "SteamLibraryScreensaver", &applyWallpaperSettings);
     return 0;
 }
+
+void setSessionDebugUi(bool enabled)
+{
+    slc::app::ScreensaverApp::setDebugUi(enabled);
+}

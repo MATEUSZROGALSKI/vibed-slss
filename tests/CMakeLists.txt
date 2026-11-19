@@ -58,6 +58,52 @@ endif()
 
 gtest_discover_tests(slc_unit_tests)
 
+# doc §9.3 pipeline tests: fixture → content → layout → choreography.
+if(TARGET slc_layout AND TARGET slc_anim)
+    add_executable(slc_integration_tests integration/test_pipeline.cpp)
+    target_link_libraries(slc_integration_tests PRIVATE
+        slc::common
+        slc::content
+        slc::layout
+        slc::anim
+        GTest::gtest
+        GTest::gtest_main
+    )
+    slc_set_warnings(slc_integration_tests)
+    target_compile_definitions(slc_integration_tests PRIVATE
+        SLC_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+    )
+    gtest_discover_tests(slc_integration_tests)
+endif()
+
+# doc §9.5 performance benchmarks (Google Benchmark, run manually:
+# build/<preset>/tests/slc_benchmarks[_layout] --benchmark_out=bench.json).
+find_package(benchmark CONFIG QUIET)
+if(TARGET benchmark::benchmark)
+    add_executable(slc_benchmarks bench/bench_parse.cpp)
+    target_link_libraries(slc_benchmarks PRIVATE
+        slc::appconfig
+        slc::common
+        slc::content
+        benchmark::benchmark
+        benchmark::benchmark_main
+    )
+    slc_set_warnings(slc_benchmarks)
+    target_compile_definitions(slc_benchmarks PRIVATE
+        SLC_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+    )
+
+    if(TARGET slc_layout)
+        add_executable(slc_benchmarks_layout bench/bench_layout.cpp)
+        target_link_libraries(slc_benchmarks_layout PRIVATE
+            slc::layout
+            benchmark::benchmark
+            benchmark::benchmark_main
+        )
+        slc_set_warnings(slc_benchmarks_layout)
+    endif()
+endif()
+
 # Windows host contract test (doc 9.3): real parent HWND + `/p` child.
 if(WIN32 AND TARGET slc_host_win)
     add_executable(slc_preview_harness host_win/preview_parent.cpp)

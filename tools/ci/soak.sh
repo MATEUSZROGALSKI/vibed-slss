@@ -16,7 +16,7 @@ export LIBGL_ALWAYS_SOFTWARE=1
 export SLC_TEST_DISABLE_INPUT_CHECK=1
 export SLC_STEAM_ROOT=${SLC_STEAM_ROOT:?set SLC_STEAM_ROOT to a fixture steam tree}
 
-"$BIN" --run &
+"$BIN" --run --allow-test-hooks &
 PID=$!
 start=$SECONDS
 peak=0

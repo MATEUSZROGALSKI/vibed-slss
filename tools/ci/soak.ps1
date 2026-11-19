@@ -17,7 +17,7 @@ $trialSec = 120
 
 $env:SLC_TEST_DISABLE_INPUT_CHECK = '1'
 
-$proc = Start-Process -FilePath $Scr -ArgumentList '/s' -PassThru
+$proc = Start-Process -FilePath $Scr -ArgumentList '/s', '--allow-test-hooks' -PassThru
 $start = Get-Date
 $peakKb = 0
 $earlyExit = $false

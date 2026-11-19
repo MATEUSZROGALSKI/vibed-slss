@@ -32,6 +32,18 @@
       "dependencies": [
         "qtbase"
       ]
+    },
+    "debug-ui": {
+      "description": "ImGui debug overlay (SLC_WITH_IMGUI; --debug-ui / advanced.debugUi)",
+      "dependencies": [
+        {
+          "name": "imgui",
+          "features": [
+            "opengl3-binding",
+            "docking-experimental"
+          ]
+        }
+      ]
     }
   }
 }

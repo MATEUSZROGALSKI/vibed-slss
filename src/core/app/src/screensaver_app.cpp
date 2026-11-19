@@ -57,6 +57,12 @@ bool& ignoreReducedMotionSlot()
     return slot;
 }
 
+bool& debugUiSlot()
+{
+    static bool slot = false;
+    return slot;
+}
+
 std::function<void()>& frameEndHookSlot()
 {
     static std::function<void()> slot;
@@ -77,6 +83,11 @@ struct FrameEndGuard {
 void ScreensaverApp::setIgnoreReducedMotion(bool ignore)
 {
     ignoreReducedMotionSlot() = ignore;
+}
+
+void ScreensaverApp::setDebugUi(bool enabled)
+{
+    debugUiSlot() = enabled;
 }
 
 void ScreensaverApp::setFrameEndHook(std::function<void()> hook)
@@ -123,6 +134,13 @@ void ScreensaverApp::setup()
 
     if (m_config.animation.showBadge) {
         ensureBadgeFonts();
+    }
+    if ((debugUiSlot() || m_config.advanced.debugUi) &&
+        DebugUi::available()) {
+        m_debugUi = std::make_unique<DebugUi>();
+        m_debugUi->attach(getWindow());
+    } else if (debugUiSlot() || m_config.advanced.debugUi) {
+        SLC_LOG_WARN("debug-ui requested but this build lacks SLC_WITH_IMGUI");
     }
     loadUserShader();
     spawnDecodeWorker();
@@ -685,6 +703,9 @@ void ScreensaverApp::draw()
     const FrameEndGuard frameGuard;
     if (!m_userShader) {
         drawScene();
+        if (m_debugUi) {
+            drawDebugUiFrame();
+        }
         return;
     }
     // User post-process pass: render the whole scene into the FBO, then
@@ -712,12 +733,18 @@ void ScreensaverApp::draw()
         "uTime", static_cast<float>(getElapsedSeconds()));
     const ci::gl::ScopedGlslProg shaderScope(m_userShader);
     ci::gl::draw(m_fbo->getColorTexture(), getWindowBounds());
+
+    // ImGui overlay renders over the finished frame (never post-processed
+    // by the user shader).
+    if (m_debugUi) {
+        drawDebugUiFrame();
+    }
 }
 
 bool ScreensaverApp::inputDismissEnabled() const
 {
     return (!m_host || !m_host->isPreviewMode()) &&
-           !env::isTruthy(env::kTestDisableInputVar);
+           !env::testHookTruthy(env::kTestDisableInputVar);
 }
 
 void ScreensaverApp::keyDown(ci::app::KeyEvent /*event*/)
@@ -753,6 +780,9 @@ void ScreensaverApp::mouseMove(ci::app::MouseEvent event)
 void ScreensaverApp::cleanup()
 {
     SLC_LOG_INFO("screensaver cleanup (resident={})", m_pool->residentCount());
+    // ImGui shutdown needs the GL context still current — before anything
+    // else tears down render resources.
+    m_debugUi.reset();
     m_decodeStop = true;
     m_decodeCv.notify_all(); // detached decode workers exit on next poll
     {

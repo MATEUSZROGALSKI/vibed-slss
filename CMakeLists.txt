@@ -24,6 +24,7 @@ option(SLC_FETCH_CINDER "Fetch Cinder sources (header-only targets)" ON)
 option(SLC_BUILD_CINDER "Compile libcinder + GL-dependent modules" OFF)
 option(SLC_BUILD_QT_TOOLS "Build Qt configurator / linux host" OFF)
 option(SLC_WITH_CPR "Compile cpr-backed HTTP transport for SteamGridDB enrichment" OFF)
+option(SLC_WITH_IMGUI "ImGui debug overlay (--debug-ui / advanced.debugUi)" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(SlcWarnings)

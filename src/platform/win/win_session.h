@@ -12,6 +12,10 @@ int runScreensaverSession(bool preview, HWND previewParent);
 // behind the desktop icons. Implemented next to runScreensaverSession.
 int runWallpaperSession();
 
+// Enable the ImGui debug overlay for subsequently started sessions
+// (--debug-ui). No-op in non-Cinder builds.
+void setSessionDebugUi(bool enabled);
+
 // Discovery diagnostic shared by --list-artwork and the no-Cinder fallback.
 // Defined in win_main.cpp.
 int diagnoseArtwork();

@@ -18,6 +18,10 @@ int runXssSession(unsigned long parentXid);
 // so callers fall back to the static wallpaper daemon.
 int runWallpaperSession();
 
+// Enable the ImGui debug overlay for subsequently started sessions
+// (--debug-ui). No-op in non-Cinder builds.
+void setSessionDebugUi(bool enabled);
+
 // Discovery diagnostic shared by --list-artwork and the no-Cinder fallback.
 // Defined in linux_main.cpp.
 int diagnoseArtwork();

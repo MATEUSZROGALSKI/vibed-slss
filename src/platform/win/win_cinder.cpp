@@ -179,8 +179,10 @@ LRESULT CALLBACK scrWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         s_app = ci::app::AppScreenSaver::main<slc::app::ScreensaverApp,
                                               MsaaRendererGl>(
             hWnd, "SteamLibraryScreensaver", &applySettings);
-        if (const char* idle = std::getenv("SLC_TEST_IDLE_TIMEOUT_MS")) {
-            if (const UINT ms = static_cast<UINT>(std::strtoul(idle, nullptr, 10));
+        if (const auto idle =
+                slc::env::getTestHook(slc::env::kTestIdleTimeoutVar)) {
+            if (const UINT ms =
+                    static_cast<UINT>(std::strtoul(idle->c_str(), nullptr, 10));
                 ms > 0) {
                 SetTimer(hWnd, kIdleTimerId, ms, nullptr);
             }
@@ -206,7 +208,7 @@ int runScreensaverSession(bool preview, HWND previewParent)
 {
     s_preview = preview;
     s_inputCheckDisabled =
-        slc::env::isTruthy(slc::env::kTestDisableInputVar);
+        slc::env::testHookTruthy(slc::env::kTestDisableInputVar);
     slc::app::ScreensaverApp::setHostFactory(
         [preview] { return std::make_unique<WinHost>(preview); });
 
@@ -418,4 +420,9 @@ int runWallpaperSession()
     SLC_LOG_INFO("wallpaper session ended, code={}",
                  static_cast<int>(msg.wParam));
     return static_cast<int>(msg.wParam);
+}
+
+void setSessionDebugUi(bool enabled)
+{
+    slc::app::ScreensaverApp::setDebugUi(enabled);
 }

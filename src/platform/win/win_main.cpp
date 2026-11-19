@@ -50,6 +50,8 @@ enum class Mode {
 struct Args {
     Mode mode = Mode::Run;
     HWND previewParent = nullptr;
+    bool allowTestHooks = false;
+    bool debugUi = false;
 };
 
 Args parseArgs(const std::wstring& cmdline)
@@ -86,6 +88,10 @@ Args parseArgs(const std::wstring& cmdline)
             }
         } else if (t == L"--list-artwork") {
             out.mode = Mode::ListArtwork;
+        } else if (t == L"--allow-test-hooks") {
+            out.allowTestHooks = true;
+        } else if (t == L"--debug-ui") {
+            out.debugUi = true;
         } else if (t == L"--wallpaper") {
             out.mode = Mode::Wallpaper;
         } else if (t == L"--help" || t == L"-h") {
@@ -133,6 +139,10 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR cmdline, int)
 {
     slc::logging::initFileLogging(slc::platform::logDir());
     const Args args = parseArgs(cmdline ? cmdline : L"");
+    slc::env::setAllowTestHooks(args.allowTestHooks);
+    if (args.debugUi) {
+        setSessionDebugUi(true);
+    }
     SLC_LOG_INFO("slc_host_win start, mode={}", static_cast<int>(args.mode));
 
     switch (args.mode) {
@@ -142,7 +152,9 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR cmdline, int)
                    "  /c[:HWND]     configure\n"
                    "  /p <HWND>     preview\n"
                    "  --wallpaper   live wallpaper behind desktop icons\n"
-                   "  --list-artwork  print discovered artwork\n",
+                   "  --list-artwork  print discovered artwork\n"
+                   "  --allow-test-hooks  honour SLC_TEST_* env vars\n"
+                   "  --debug-ui    ImGui debug overlay (needs SLC_WITH_IMGUI)\n",
                    stdout);
         return 0;
 

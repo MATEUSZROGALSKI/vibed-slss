@@ -18,3 +18,5 @@ int runWallpaperSession()
                  "session");
     return 1;
 }
+
+void setSessionDebugUi(bool /*enabled*/) {}

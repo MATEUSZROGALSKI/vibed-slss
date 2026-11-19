@@ -35,6 +35,8 @@ enum class Mode { Daemon, Run, Xss, Wallpaper, ListArtwork, Help };
 struct Args {
     Mode mode = Mode::Daemon;
     quint32 idleSec = 0;
+    bool allowTestHooks = false;
+    bool debugUi = false;
 };
 
 Args parseArgs(int argc, char** argv)
@@ -54,6 +56,10 @@ Args parseArgs(int argc, char** argv)
             out.mode = Mode::ListArtwork;
         } else if (t == "--idle-sec" && i + 1 < argc) {
             out.idleSec = static_cast<quint32>(std::strtoul(argv[++i], nullptr, 10));
+        } else if (t == "--allow-test-hooks") {
+            out.allowTestHooks = true;
+        } else if (t == "--debug-ui") {
+            out.debugUi = true;
         } else if (t == "--help" || t == "-h") {
             out.mode = Mode::Help;
         }
@@ -97,6 +103,10 @@ int main(int argc, char** argv)
 {
     slc::logging::initFileLogging(slc::platform::logDir());
     const Args args = parseArgs(argc, argv);
+    slc::env::setAllowTestHooks(args.allowTestHooks);
+    if (args.debugUi) {
+        setSessionDebugUi(true);
+    }
     SLC_LOG_INFO("slc_host_linux start, mode={}", static_cast<int>(args.mode));
 
     switch (args.mode) {
@@ -107,6 +117,8 @@ int main(int argc, char** argv)
                    "  --wallpaper     live wallpaper session\n"
                    "  --xss           xscreensaver hack mode\n"
                    "  --idle-sec N    daemon: idle-time activation threshold\n"
+                   "  --allow-test-hooks  honour SLC_TEST_* env vars\n"
+                   "  --debug-ui    ImGui debug overlay (needs SLC_WITH_IMGUI)\n"
                    "  --list-artwork  print discovered artwork\n",
                    stdout);
         return 0;
@@ -149,7 +161,12 @@ int main(int argc, char** argv)
 
     QProcess session;
     session.setProgram(QCoreApplication::applicationFilePath());
-    session.setArguments({QStringLiteral("--run")});
+    // Forward the test-hook gate so hooks work inside spawned sessions too.
+    session.setArguments(
+        slc::env::allowTestHooks()
+            ? QStringList{QStringLiteral("--run"),
+                          QStringLiteral("--allow-test-hooks")}
+            : QStringList{QStringLiteral("--run")});
 
     QObject::connect(&watcher, &slc::host::IdleWatcher::activated, &app, [&] {
         if (session.state() == QProcess::Running) {
@@ -167,9 +184,10 @@ int main(int argc, char** argv)
     watcher.start();
 
     // Test hook: bound the daemon's life for CI smoke runs.
-    if (const char* ms = std::getenv("SLC_TEST_IDLE_TIMEOUT_MS")) {
-        QTimer::singleShot(static_cast<int>(std::strtoul(ms, nullptr, 10)),
-                           &app, &QCoreApplication::quit);
+    if (const auto ms = slc::env::getTestHook(slc::env::kTestIdleTimeoutVar)) {
+        QTimer::singleShot(
+            static_cast<int>(std::strtoul(ms->c_str(), nullptr, 10)), &app,
+            &QCoreApplication::quit);
     }
 
     const int rc = app.exec();

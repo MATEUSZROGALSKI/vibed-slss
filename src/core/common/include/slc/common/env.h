@@ -19,4 +19,12 @@ inline constexpr std::string_view kTestDisableInputVar = "SLC_TEST_DISABLE_INPUT
 [[nodiscard]] std::optional<std::filesystem::path> getPath(std::string_view name);
 [[nodiscard]] bool isTruthy(std::string_view name);
 
+// Test-hook gate (doc §9.6): SLC_TEST_* variables are only honoured when the
+// host was launched with --allow-test-hooks. Hosts call setAllowTestHooks()
+// once during argument parsing.
+void setAllowTestHooks(bool enabled);
+[[nodiscard]] bool allowTestHooks();
+[[nodiscard]] std::optional<std::string> getTestHook(std::string_view name);
+[[nodiscard]] bool testHookTruthy(std::string_view name);
+
 } // namespace slc::env

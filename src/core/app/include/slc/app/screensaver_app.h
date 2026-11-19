@@ -5,6 +5,7 @@
 #include "slc/anim/ken_burns_animator.h"
 #include "slc/anim/matrix_choreographer.h"
 #include "slc/anim/scene_transition.h"
+#include "slc/app/debug_ui.h"
 #include "slc/app/iplatform_host.h"
 #include "slc/app/pick_queue.h"
 #include "slc/config/app_config.h"
@@ -93,6 +94,10 @@ class ScreensaverApp : public ScreensaverAppBase {
     /// exit path. Platform hosts use it to present the frame elsewhere —
     /// e.g. the Wayland wallpaper copies it to a layer-shell surface.
     static void setFrameEndHook(std::function<void()> hook);
+
+    /// Force the ImGui debug overlay on (--debug-ui); advanced.debugUi in
+    /// config enables it too. No-op in builds without SLC_WITH_IMGUI.
+    static void setDebugUi(bool enabled);
 
     void setup() override;
     void update() override;
@@ -278,6 +283,10 @@ class ScreensaverApp : public ScreensaverAppBase {
     void ensureBadgeFonts();
     void rebuildCells();
     void drawDebugOverlay(const ci::Rectf& bounds);
+    /// ImGui overlay frame: stats + live toggles at the very end of
+    /// draw() (outside the user-shader FBO). Null m_debugUi in non-ImGui
+    /// builds.
+    void drawDebugUiFrame();
     /// Whole-frame content; draw() either calls this directly or renders
     /// it into m_fbo and post-processes through m_userShader.
     void drawScene();
@@ -494,6 +503,9 @@ class ScreensaverApp : public ScreensaverAppBase {
     // Mouse-jiggle tolerance for dismiss-on-input: first reported position is
     // the anchor; a move past kMouseDismissPx quits (Linux only in practice).
     ci::vec2 m_mouseAnchor{-1.0F, -1.0F};
+    // ImGui overlay (advanced.debugUi / --debug-ui); null unless the build
+    // has SLC_WITH_IMGUI and the overlay was requested.
+    std::unique_ptr<DebugUi> m_debugUi;
 };
 
 } // namespace slc::app

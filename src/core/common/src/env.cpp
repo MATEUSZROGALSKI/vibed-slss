@@ -45,4 +45,31 @@ bool isTruthy(std::string_view name)
     return *value == "1" || *value == "true" || *value == "yes" || *value == "on";
 }
 
+namespace {
+bool g_allowTestHooks = false;
+}
+
+void setAllowTestHooks(bool enabled)
+{
+    g_allowTestHooks = enabled;
+}
+
+bool allowTestHooks()
+{
+    return g_allowTestHooks;
+}
+
+std::optional<std::string> getTestHook(std::string_view name)
+{
+    if (!g_allowTestHooks) {
+        return std::nullopt;
+    }
+    return get(name);
+}
+
+bool testHookTruthy(std::string_view name)
+{
+    return g_allowTestHooks && isTruthy(name);
+}
+
 } // namespace slc::env

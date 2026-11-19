@@ -35,3 +35,5 @@ int runWallpaperSession()
                stderr);
     return 3;
 }
+
+void setSessionDebugUi(bool /*enabled*/) {}

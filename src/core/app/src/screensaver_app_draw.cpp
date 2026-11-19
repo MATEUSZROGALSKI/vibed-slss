@@ -20,6 +20,12 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <mutex>
+#include <vector>
+
+#if defined(SLC_WITH_IMGUI)
+#include <imgui.h>
+#endif
 
 namespace slc::app {
 
@@ -419,12 +425,9 @@ std::string badgeDate(std::uint64_t lastPlayed)
         return {};
     }
     const std::time_t t = static_cast<std::time_t>(lastPlayed);
-    std::tm tm{};
-#ifdef _WIN32
-    localtime_s(&tm, &t);
-#else
-    localtime_r(&t, &tm);
-#endif
+    // Single-threaded draw path — std::localtime keeps this portable.
+    const std::tm* tmp = std::localtime(&t);
+    std::tm tm = tmp ? *tmp : std::tm{};
     char buf[16];
     std::strftime(buf, sizeof(buf), "%b %Y", &tm);
     return buf;
@@ -1179,7 +1182,7 @@ void ScreensaverApp::drawScene()
     const float pulse = 0.02F + 0.015F * std::sin(t * 0.8F);
     ci::gl::clear(ci::Color(0.02F, 0.03F, 0.06F + pulse));
 
-    if (m_config.advanced.debugUi) {
+    if (m_config.advanced.debugUi && !m_debugUi) {
         drawDebugOverlay(bounds);
     }
 }
@@ -1208,5 +1211,94 @@ void ScreensaverApp::drawDebugOverlay(const ci::Rectf& bounds)
                        ci::ColorA(1, 1, 1, 0.8F),
                        ci::Font("Arial", 16.0F));
 }
+
+#if defined(SLC_WITH_IMGUI)
+
+void ScreensaverApp::drawDebugUiFrame()
+{
+    const float dt = m_frameTimes.empty() ? 1.0F / 60.0F
+                                          : m_frameTimes.back();
+    const float pxScale =
+        getWindow() ? getWindow()->getContentScale() : 1.0F;
+    m_debugUi->newFrame(
+        dt, ci::vec2(getWindowWidth(), getWindowHeight()), pxScale);
+
+    // Frame-time stats over the rolling window (same math as the text
+    // overlay above).
+    std::vector<float> dts(m_frameTimes.begin(), m_frameTimes.end());
+    std::sort(dts.begin(), dts.end());
+    const float med = dts.empty() ? 0.0F : dts[dts.size() / 2];
+    const float p1 =
+        dts.empty()
+            ? 0.0F
+            : dts[std::min(dts.size() - 1,
+                           static_cast<std::size_t>(dts.size() * 0.99F))];
+
+    if (ImGui::Begin("slc debug", nullptr,
+                     ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("fps %.0f | 1%% low %.0f | frame %.2f ms",
+                    med > 0.0F ? 1.0F / med : 0.0F,
+                    p1 > 0.0F ? 1.0F / p1 : 0.0F,
+                    static_cast<double>(med * 1000.0F));
+        if (!dts.empty()) {
+            ImGui::PlotLines("##frametimes", dts.data(),
+                             static_cast<int>(dts.size()), 0, nullptr,
+                             0.0F, 0.05F, ImVec2(220, 48));
+        }
+        ImGui::Separator();
+
+        const char* state = m_state == State::Loading  ? "loading"
+                            : m_state == State::Running ? "running"
+                                                        : "fallback";
+        const char* scene = m_scene == SceneKind::Single  ? "single"
+                            : m_scene == SceneKind::Collage ? "collage"
+                                                            : "matrix";
+        ImGui::Text("state=%s scene=%s idx=%zu cells=%zu", state, scene,
+                    m_sceneIndex, m_cells.size());
+        ImGui::Text("playlist=%zu resident=%zu",
+                    playlistSize(),
+                    m_pool ? m_pool->residentCount() : 0u);
+        {
+            std::lock_guard lock(m_decodeMutex);
+            ImGui::Text("decodeQ=%zu inflight=%zu zombies=%d",
+                        m_decodeQueue.size(), m_inflight.size(),
+                        m_decodeZombies.load());
+        }
+        {
+            std::lock_guard lock(m_failedMutex);
+            ImGui::Text("failed=%zu", m_failed.size());
+        }
+        ImGui::Separator();
+
+        // Live toggles: routed through applyConfig like a file reload.
+        bool badge = m_config.animation.showBadge;
+        if (ImGui::Checkbox("badge", &badge)) {
+            auto next = m_config;
+            next.animation.showBadge = badge;
+            applyConfig(std::move(next));
+        }
+        bool blur = m_config.rendering.blurBackground;
+        if (ImGui::Checkbox("blur background", &blur)) {
+            auto next = m_config;
+            next.rendering.blurBackground = blur;
+            applyConfig(std::move(next));
+        }
+        bool collageAnim = m_config.animation.collage.enabled;
+        if (ImGui::Checkbox("collage anim", &collageAnim)) {
+            auto next = m_config;
+            next.animation.collage.enabled = collageAnim;
+            applyConfig(std::move(next));
+        }
+    }
+    ImGui::End();
+
+    m_debugUi->render();
+}
+
+#else
+
+void ScreensaverApp::drawDebugUiFrame() {}
+
+#endif // SLC_WITH_IMGUI
 
 } // namespace slc::app
