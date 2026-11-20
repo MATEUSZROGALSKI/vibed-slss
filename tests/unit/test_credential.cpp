@@ -10,7 +10,7 @@ TEST(Credential, RoundTripOrGracefulFailure)
     constexpr const char* kKey = "slc.coverage.test";
     constexpr const char* kValue = "test-value-12345";
 
-    slc::platform::deleteCredential(kKey); // ensure clean slate
+    (void)slc::platform::deleteCredential(kKey); // ensure clean slate
     EXPECT_FALSE(slc::platform::loadCredential(kKey).has_value());
 
     if (slc::platform::storeCredential(kKey, kValue)) {
@@ -22,6 +22,6 @@ TEST(Credential, RoundTripOrGracefulFailure)
     } else {
         // Store unavailable (e.g. no secret-tool): lookups stay safe.
         EXPECT_FALSE(slc::platform::loadCredential(kKey).has_value());
-        slc::platform::deleteCredential(kKey);
+        (void)slc::platform::deleteCredential(kKey);
     }
 }

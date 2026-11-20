@@ -25,7 +25,7 @@ class ControlAdaptor : public QObject
   public slots:
     Q_SCRIPTABLE void Reload()
     {
-        app::ScreensaverApp::controlCommand("RELOAD");
+        (void)app::ScreensaverApp::controlCommand("RELOAD");
     }
     Q_SCRIPTABLE QString GetStatus()
     {
@@ -44,7 +44,7 @@ class ControlAdaptor : public QObject
 
 void registerControlAdaptor()
 {
-    auto& bus = QDBusConnection::sessionBus();
+    auto bus = QDBusConnection::sessionBus();
     if (!bus.isConnected()) {
         SLC_LOG_WARN("control: no session bus — control channel off");
         return;

@@ -4,7 +4,7 @@
 // io.github.slc.Control on the session bus, exposing Reload() /
 // GetStatus() / SetConfig(json) at /io/github/slc/Control. External
 // tools drive it directly, e.g.:
-//   busctl --user call io.github.slc.Control /io/github/slc/Control \
+//   busctl --user call io.github.slc.Control /io/github/slc/Control
 //       io.github.slc.Control GetStatus
 
 namespace slc::platform {
